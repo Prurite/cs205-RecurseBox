@@ -1,26 +1,54 @@
 #include <string>
 using std::string;
+enum Identity { WALL , PLAYER, DESTINATION, SUB_MAP};
+enum Direction { UP, DOWN, LEFT, RIGHT };
 
 class Box {
-private:
-    enum Destination { NOT_DESTINATION, PLAYER, BOX };
+    private:
+    Identity Identity;
+    public:
+        Box();
+        Box(string);
+        ~Box();
+        string Serialize();
+        virtual void Move(Direction d);
+        virtual bool Movable(Direction d);
+};
 
-    int player_id; // 0 not player; >0: the order it moves
-    bool is_wall;
-    Destination dest_type;
-    Box** subspace; // NULL: no subspace
-    int height, width;
-    Box* clone_of; // NULL: not a clone
-    Box* parent; 
+class player : public Box {
+    private:
 
-    Box();
-    Box(string);
-    ~Box();
-    string Serialize();
+    public:
+        player();
+        ~player();
+};
+class wall : public Box {
+    private:
 
-    enum Direction { UP, DOWN, LEFT, RIGHT };
-    void Move(Direction d);
-    bool Movable(Direction d);
-    bool isComplete();
+    public:
+        wall();
+        ~wall();
+        void Move(Direction d);
+        bool Movable(Direction d);
+        bool isComplete();
+};
+class destination : public Box {
+    private:
 
+    public:
+        destination();
+        ~destination();
+        void Move(Direction d);
+        bool Movable(Direction d);
+        bool isComplete();
+};
+class sub_map : public Box {
+    private:
+        int index_of_map;
+    public:
+        sub_map();
+        ~sub_map();
+        void Move(Direction d);
+        bool Movable(Direction d);
+        bool isComplete();
 };
