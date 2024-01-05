@@ -42,12 +42,11 @@ class destination : public Box {
         bool Movable(Direction d);
         bool isComplete();
 };
-class sub_map : public Box {
+class Map : public Box {
     private:
         int index_of_map;
+        Box **map;
     public:
-        sub_map();
-        ~sub_map();
         void Move(Direction d);
         bool Movable(Direction d);
         bool isComplete();
