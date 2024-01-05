@@ -46,6 +46,7 @@ class Map : public Box {
     private:
         int index_of_map;
         Box **map;
+        int x_range, y_range;
     public:
         void Move(Direction d);
         bool Movable(Direction d);
