@@ -1,18 +1,20 @@
 #include <string>
+#include <vector>
 using std::string;
-enum Identity { WALL , PLAYER, DESTINATION, SUB_MAP};
+enum Identity { WALL , PLAYER, SUB_MAP, EMPTY, BOX};
 enum Direction { UP, DOWN, LEFT, RIGHT };
 
 class Box {
     private:
-    Identity Identity;
+
     public:
+        Identity Identity = BOX;
         Box();
         Box(string);
         ~Box();
         string Serialize();
-        virtual void Move(Direction d);
-        virtual bool Movable(Direction d);
+        bool isEnterable(Direction d);
+        operator Map();
 };
 
 class player : public Box {
@@ -28,27 +30,57 @@ class wall : public Box {
     public:
         wall();
         ~wall();
-        void Move(Direction d);
-        bool Movable(Direction d);
-        bool isComplete();
 };
-class destination : public Box {
-    private:
-
-    public:
-        destination();
-        ~destination();
-        void Move(Direction d);
-        bool Movable(Direction d);
-        bool isComplete();
-};
+/*
+        y       
+ |------------------
+ |
+ |
+ |
+x|
+ |
+ |
+ |
+*/
 class Map : public Box {
     private:
         int index_of_map;
+        int x_player = -1, y_player = -1;
+        int x_length,y_length;
+        std::vector<int> x_destination;
+        std::vector<int> y_destination;
         Box **map;
-        int x_range, y_range;
     public:
-        void Move(Direction d);
-        bool Movable(Direction d);
+        Map();
+        Map(int index_of_map, int x_length, int y_length, int x_player, int y_player, 
+            std::vector<int> x_destination, std::vector<int> y_destination, Box **map);
+        ~Map();
+        
+        bool hasPlayer();
+        /*
+        @todo
+        check if this direction is enterable
+        */
+        bool isEnterable(Direction d, Map &submap);
+        /*
+        @todo
+        check if the final position is empty or submap
+        @return
+        0: not movable
+        1: movable with empty or cycle
+        2: movable with submap
+        */
+       
+        int Movable(Direction d, int x_temp, int y_temp, Map &submap);
+        /*
+        @todo
+        check as movable
+        if the final position is empty
+        then swap from empty to player
+        else if the final position is submap
+        then check if the submap is enterable
+        */
+        bool Move(Direction d, Map &submap);
+        void printMap();
         bool isComplete();
 };
