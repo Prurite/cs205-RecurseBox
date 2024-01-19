@@ -70,8 +70,6 @@ class Subspace : public Box {
     // Positions start from 0
     bool mirrored; // Whether it's mirrored
 
-    vector<int> visitedBoxes; // Record of visited boxes in a move attempt to solve the cycles
-
 public:
     Subspace(Map& map, int id, int parentId, size_t len, string subBoxes, bool mirrored, int playerId = 0) :
             Box(map, parentId, playerId), subspaceId(id), len(len), mirrored(mirrored) {
@@ -143,13 +141,16 @@ public:
     vector<Box> boxes; // Subspaces and other movable boxes
     // 0: The max inf space, 1: max eps space, 2...: normal boxes
     vector<int> playerBoxes; // All boxes that are players, the lower the index the higher priority it has
+    struct MoveRecord { int subspaceId, x, y; };
+    vector<MoveRecord> moveRecords; // The temp array for detecting moving loops,
+    // it should be cleared before each move
 
     Map(string s) { loadFromString(s); }; // Load a map from a string
     void loadFromString(string s); // Load a map from a string
     string toString(); // Return a string representation of the map
     const vector<Box>& getBoxes() { return boxes; };
     int getBoxIdCurrentPlayerIn(); // Get the box id that the current player is in
-    Subspace& getSubspace(int id); // Get the subspace with id
+    Subspace& getSubspace(int id); // Get the subspace with id, may be a copy or an original id
 };
 
 class Game {
@@ -158,7 +159,7 @@ public:
     vector<Map> moves; // Used for storing the history of moves
     int curMove; // Current move id
 
-    Game(string s) { loadFromString(s) }; // Load a game from a string
+    Game(string s) { loadFromString(s); }; // Load a game from a string
     void loadFromString(string s); // Load a game from a string
     string toString(); // Return a string representation of the game
     bool move(Direction d); // Move the player in a direction d
