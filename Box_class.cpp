@@ -228,3 +228,6 @@ bool Map::Move(Direction d, Map &submap){
         return false;
     }
 }
+bool Map::Move(Direction d){//换种思路，考虑如何处理出箱子、进箱子。相关思路写在readme中
+
+}

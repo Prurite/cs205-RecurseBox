@@ -82,6 +82,7 @@ class Map : public Box {
         then check if the submap is enterable
         */
         bool Move(Direction d, Map &submap);
+        bool Move(Direction d);
         void printMap();
         bool isComplete();
 };
