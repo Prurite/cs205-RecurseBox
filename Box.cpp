@@ -2,8 +2,11 @@
 #include <stack>
 using std::stack;
 
+// TODO: loop; infinity
+
 bool Subspace::move(int x, int y, Direction d) {
-    // Move the box at x row, y col to a direction d
+    // Try to move the box at x row, y col to a direction d by 1 step
+    // Return true if the move is successful, false otherwise
     int dx, dy;
     switch (d) {
         case UP: dx = -1; dy = 0; break;
@@ -15,54 +18,54 @@ bool Subspace::move(int x, int y, Direction d) {
     if (innerSpace[x][y] != EMPTY) return false;
     if (subBoxes[x][y] == EMPTY) return false;
 
-    // Search in the direction d, till an empty space, a wall, or end of the subspace
-    // Priority: Move > Enter (A -into-> B) > Eat (A <-into- B)
+    // 4 cases: 1) Edge 2) Wall 3) Space 4) Another box
     int nx = x + dx, ny = y + dy;
-    while (1) {
-        if (nx < 0 || nx >= len || ny < 0 || ny >= len) {
-            // When the push goes out of current subspace
+    if (nx < 0 || nx >= len || ny < 0 || ny >= len) {
+    // 1) Edge
+        // a) Infinity
+        if (getParentId() == 0 || getParentId() == subspaceId) {
             // TODO
-        } else if (innerSpace[nx][ny] == WALL) {
-            // When a wall is found on path
-            // Moving is not possible, check back if any subspace is enterable
-            int lastx = nx - dx, lasty = ny - dy;
-            // 1) Check push-in: (nx-dx, nx-dy) into (nx, ny)
-            nx = lastx, ny = lasty;
-            while (nx != x && ny != y) {
-                int curId = subBoxes[nx][ny], prevId = subBoxes[nx - dx][ny - dy];
-                if (curId > SUBSPACE_ID) // A subspace is found
-                    if (map.getSubspace(curId).enter(prevId, d)) {
-                    // Box at (nx-dx, ny-dy) moves into the subspace,
-                    // then break to let other boxes in the subspace move
-                        nx -= dx; ny -= dy;
-                        break;
-                    }
-                nx -= dx; ny -= dy;
-            }
-            // 2) Check eating: (nx-dx, nx-dy) eats (nx, ny)
-            nx = lastx, ny = lasty;
-            while (nx != x && ny != y) {
-                int curId = subBoxes[nx][ny], prevId = subBoxes[nx - dx][ny - dy];
-                if (prevId > SUBSPACE_ID)
-                    if (map.getSubspace(prevId).enter(curId, invert(d))) {
-                    // Box at (nx, ny) is eaten by (nx-dx, nx-dy)
-                    // Break to let other boxes in the subspace move
-                        break;
-                    }
-            }
-        } else if (subBoxes[nx][ny] != EMPTY) {
-            // When a movable box is found on path, continue search in the direction d
-            nx += dx; ny += dy;
-        } else {
-            // A space is found, move the boxes
-            break;
+            return false;
         }
+        // b) Normal
+        int posx, posy; // Find the position of the leaving subspace in the outer space
+        int parentId = getParentId();
+        map.getSubspace(parentId).getBoxXY(subspaceId, posx, posy);
+        if (map.getSubspace(parentId).enter(subBoxes[x][y], d, posx + dx, posy + dy)) {
+        // Try to push the current box to the outer area
+            subBoxes[x][y] = EMPTY;
+            return true;
+        } else
+            return false;
+    } else if (isWall(nx, ny))
+    // 2) Wall
+        return false;
+    else if (isTileEmpty(nx, ny)) {
+    // 3) Space
+        subBoxes[nx][ny] = subBoxes[x][y];
+        subBoxes[x][y] = EMPTY;
+        return true;
     }
-    // Move boxes searching from (nx, ny) back
-    while (nx != x && ny != y) {
-        subBoxes[nx][ny] = subBoxes[nx - dx][ny - dy];
-        subBoxes[nx - dx][ny - dy] = EMPTY;
-        nx -= dx; ny -= dy;
+    // 4) Another box
+    if (move(nx, ny, d)) {
+        // a) It's movable
+        subBoxes[nx][ny] = subBoxes[x][y];
+        subBoxes[x][y] = EMPTY;
+        return true;
+    } else if (isSubspace(nx, ny)
+            && map.getSubspace(subBoxes[nx][ny]).enter(subBoxes[x][y], d)) {
+        // b) It's enterable
+        subBoxes[x][y] = EMPTY;
+        return true;
+    } else if (isSubspace(x, y)
+            && map.getSubspace(subBoxes[x][y]).enter(subBoxes[nx][ny], invert(d))) {
+        // c) It's eatable
+        subBoxes[nx][ny] = subBoxes[x][y];
+        subBoxes[x][y] = EMPTY;
+        return true;
     }
-    return true;
+    return false;
+}
+
+bool Subspace::enter(int boxId, Direction d, int x, int y) {
 }

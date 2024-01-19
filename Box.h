@@ -49,7 +49,7 @@ protected:
 
 public:
     Box(Map& map, int parentId, int playerId = 0) : map(map), parentId(parentId), playerId(playerId) {};
-    int getParent() { return parentId; };
+    int getParentId() { return parentId; };
     int getPlayerId() { return playerId; };
     int setPlayerId(int p) { playerId = p; };
 };
@@ -58,7 +58,7 @@ class SolidBlock : public Box {
     // A solid block containing no internal structures
 
 public:
-    SolidBlock(int parentId, int playerId = 0) : Box(parentId, playerId) {};
+    SolidBlock(Map& map, int parentId, int playerId = 0) : Box(map, parentId, playerId) {};
 };
 
 class Subspace : public Box {
@@ -82,13 +82,20 @@ public:
     void loadFromString(string s); // Load a subspace from a string
     // The map is saved per each subspace, and references to other subspaces are described by spaceid.
     bool move(int x, int y, Direction d); // Move the box at (x,y) in a direction d
-    bool enter(int boxId, Direction d, int x = -1); // Enter the subspace at (x) in a direction d, when x = -1, it's the middle
+    bool enter(int boxId, Direction d, int x = -2, int y = -2);
+    // Enter the subspace at (x, y) in a direction d,
+    // by default, its the middle of that direction from outside.
+    // x, y may be -1 or len, in such case, it means that a box is about to leave the subspace.
     bool checkComplete(); // Check if all boxes are in the right place
 
     size_t getLen() { return len; };
     const vector< vector<Space> >& getInnerSpace() { return innerSpace; };
     const vector< vector<int> >& getSubBoxes() { return subBoxes; };
     bool getMirrored() { return mirrored; };
+    bool isSubspace(int x, int y) { return subBoxes[x][y] >= SUBSPACE_ID; };
+    bool isWall(int x, int y) { return innerSpace[x][y] == WALL; };
+    bool isTileEmpty(int x, int y) { return innerSpace[x][y] != WALL && subBoxes[x][y] == EMPTY; };
+    bool getBoxXY(int boxId, int& x, int& y); // Get the position of a box
 };
 
 class CopyOfSubspace : public Box {
