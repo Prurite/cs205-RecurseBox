@@ -47,6 +47,7 @@ class Map : public Box {
         int index_of_map;
         int x_player = -1, y_player = -1;
         int x_length,y_length;
+        int x_parent = -1, y_parent = -1; //recording the location in the parent map, move out
         std::vector<int> x_destination;
         std::vector<int> y_destination;
         Box **map;

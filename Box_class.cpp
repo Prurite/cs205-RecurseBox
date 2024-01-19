@@ -1,4 +1,5 @@
 #include<algorithm>
+#include<stack>
 #include"Box.h"
 /*
 @todo
@@ -48,31 +49,10 @@ Map::~Map(){
 bool Map::hasPlayer(){
     return x_player != -1 && y_player != -1;
 }
-// bool Map::isEnterable(Direction d, Map &submap){
-//     int x = -1, y = -1;
-//     switch(d){
-//         case UP:
-//             x = 0, y = y_length/2;
-//             break;
-//         case DOWN:
-//             x = x_length-1, y = y_length/2;
-//             break;
-//         case LEFT:
-//             x = x_length/2, y = 0;
-//             break;
-//         case RIGHT:
-//             x = x_length/2, y = y_length-1;
-//             break;
-//     }
-//     if(Movable(d, x, y, submap)){
-//         return true;
-//     }else{
-//         return false;
-//     }
-// }
+
 /*@param
 x y is the source coordinate, d is direction*/
-int Map::Movable(Direction d, int x_temp, int y_temp, Map &submap){
+int Map::Movable(Direction d, int x_temp, int y_temp, Map &submap){//need to change the logic of movable, 等比检查中间点是否为空
     int x = x_temp, y = y_temp;
     int parameter = 0;
     switch(d){
@@ -204,6 +184,7 @@ bool Map::Move(Direction d, Map &submap){
             submap.y_player = final_y;
         }
     }else if(judge == 2){ //find the final empty or cycle then swap backward
+        std::stack<Box*> s;
         switch(d){
             case UP:
                 parameter = -1;
@@ -218,7 +199,31 @@ bool Map::Move(Direction d, Map &submap){
                 parameter = 1;
                 break;
         }
-        
+        if(d == UP || d == DOWN){
+            while(submap.map[x][y].Identity == BOX || submap.map[x][y].Identity == SUB_MAP){
+                x+=parameter;
+            }
+            int final_x = x;
+            while(parameter != submap.x_player){
+                s.push(&submap.map[x][y]);
+                x-=parameter;
+            }
+            submap.x_player = final_x;
+        }else if(d == RIGHT || d == LEFT){
+            while(submap.map[x][y].Identity == BOX || submap.map[x][y].Identity == SUB_MAP){
+                y+=parameter;
+            }
+            int final_y = y;
+            while(parameter != submap.y_player){
+                s.push(&submap.map[x][y]);
+                y-=parameter;
+            }
+            submap.y_player = final_y;
+        }
+        while (!s.empty()) {
+            std::swap(*s.top(), submap.map[x][y]);
+            s.pop();
+        }
     }else{
         return false;
     }
