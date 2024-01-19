@@ -68,8 +68,10 @@ public:
     // The map is saved per each subspace, and references to other subspaces are described by spaceid.
     bool move(int x, int y, Direction d); // Move the box at (x,y) in a direction d
     bool checkComplete(); // Check if all boxes are in the right place
+    size_t getLen() { return len; };
     const vector< vector<Space> >& getInnerSpace() { return innerSpace; };
     const vector< vector<int> >& getSubBoxes() { return subBoxes; };
+    bool getMirrored() { return mirrored; };
 };
 
 class CopyOfSubspace : public Box {
@@ -81,6 +83,9 @@ class CopyOfSubspace : public Box {
 public:
     CopyOfSubspace (int id, int parentId, int originalId, bool mirrored, int playerId = 0) :
             Box(parentId, playerId), originalId(originalId), mirrored(mirrored) {};
+    int getOriginalId() { return originalId; };
+    void setMirrored(bool m) { mirrored = m; };
+    bool getMirrored() { return mirrored; };
 };
 
 class Map {
@@ -104,7 +109,7 @@ public:
     void loadFromString(string s); // Load a game from a string
     string toString(); // Return a string representation of the game
     bool move(Direction d); // Move the player in a direction d
-    bool undo();
-    bool reset();
-    const Map& getMap() { return moves.back(); };
+    bool undo(); // Undo the last move
+    bool reset(); // Reset to the first move
+    const Map& getMap() { return moves.back(); }; // Get the current map
 };
