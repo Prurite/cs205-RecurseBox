@@ -8,50 +8,59 @@ using std::shared_ptr;
 
 enum Direction { UP, DOWN, LEFT, RIGHT };
 enum Destination { NONE, PLAYER, BLOCK };
+enum Space { EMPTY, WALL, DEST_PLAYER, DEST_BLOCK };
+const int BLOCK_ID = 100, SUBSPACE_ID = 200, COPY_ID = 1000;
+
+/* id system:
+ * Each subspace and special block has a unique id.
+ * The contents of a subspace are saved as ids.
+ * 
+ * Two arrays are used to store the inner structure of a box:
+ * 1) The non-movable part
+    * 0: open space
+    * 1: wall
+    * 2: destination for player
+    * 3: destination for block
+ * 2) The movable part
+    * 0: empty
+    * 100 + x: normal solid block x (may be player)
+    * 200 + x: subspace x
+    * 1000 * x + y: the y-th copy of subspace x
+ * All movable things are stored in a Box object.
+*/
 
 class Box {
-    // The origin for everything, stands for a single block in game
-
-    shared_ptr<Box> parent; // The parent box
+    // A regular movable box
+    int parentId; // The parent box's id, 0 for root
     int playerId; // 0 if it's not a player; -1, if it's not active; otherwise the order of player moving.
 
 public:
-    Box(shared_ptr<Box> p, int pid = 0) : parent(p), playerId(pid);
-    shared_ptr<Box> getParent() { return parent; };
+    Box(int parentId, int playerId = 0) : parentId(parentId), playerId(playerId) {};
+    int getParent() { return parentId; };
     int getPlayerId() { return playerId; };
     int setPlayerId(int p) { playerId = p; };
 };
 
-class EmptyBlock : public Box {
-    // An open space in a box, can be the destination of a player or another box
-
-    Destination destType;
+class SolidBlock : public Box {
+    // A solid block containing no internal structures
 
 public:
-    EmptyBlock(shared_ptr<Box> p, Destination dt) : Box(p), destType(dt) {};
-    Destination getDestType() { return destType; };
+    SolidBlock(int parentId, int playerId = 0) : Box(parentId, playerId) {};
 };
 
-class Block : public Box {
-    // A regular movable block
-
-public:
-    Block(shared_ptr<Box> p, int pid = 0) : Box(p, pid) {};
-};
-
-class Subspace : public Block {
+class Subspace : public Box {
     // A subspace block containing internal structures
-
-    int id; // A unique id for each subspace in a map
+    int subspaceId; // A unique id for each subspace in a map
     size_t len; // Length of its edge
-    vector< vector< shared_ptr<Box> > > subBoxes; // A 2-dim array of its sub-boxes
+    vector< vector<Space> > innerSpace; // The inner structure of the subspace
+    vector< vector<int> > subBoxes; // The movable boxes in the subspace
     // Positions start from 0
     bool mirrored; // Whether it's mirrored
 
 public:
-    Subspace(int id, shared_ptr<Box> p, size_t l, string s, bool m, int pid = 0) :
-            id(id), Block(p, pid), len(l), mirrored(m) {
-        loadFromString(s);
+    Subspace(int id, int parentId, size_t len, string subBoxes, bool mirrored, int playerId = 0) :
+            Box(parentId, playerId), subspaceId(id), len(len), mirrored(mirrored) {
+        loadFromString(subBoxes);
     };
 
     string toString(); // Return a string representation of the subspace
@@ -59,34 +68,43 @@ public:
     // The map is saved per each subspace, and references to other subspaces are described by spaceid.
     bool move(int x, int y, Direction d); // Move the box at (x,y) in a direction d
     bool checkComplete(); // Check if all boxes are in the right place
+    const vector< vector<Space> >& getInnerSpace() { return innerSpace; };
+    const vector< vector<int> >& getSubBoxes() { return subBoxes; };
 };
 
-class CopyOfSubspace : public Block {
+class CopyOfSubspace : public Box {
     // A copy of a subspace, that is enterable but not exitable
 
-    shared_ptr<Box> original; // The original subspace
+    int originalId; // The original subspace
     bool mirrored; // Whether it's mirrored
 
 public:
-    CopyOfSubspace(shared_ptr<Box> p, shared_ptr<Box> o, bool m, int pid = 0) :
-            Block(p, pid), original(o), mirrored(m) {};
+    CopyOfSubspace (int id, int parentId, int originalId, bool mirrored, int playerId = 0) :
+            Box(parentId, playerId), originalId(originalId), mirrored(mirrored) {};
 };
 
-class SolidBlock : public Block {
-    // A solid block containing no internal structures
+class Map {
+public:   
+    vector<Box> boxes; // Subspaces and other movable boxes
+    vector<int> playerBoxes; // All boxes that are players, the lower the index the higher priority it has
 
-public:
-    SolidBlock(shared_ptr<Box> p, int pid = 0) : Block(p, pid) {};
-};
-
-class Wall : public Box {
-    // A wall block that can not be moved
-
-public:
-    Wall(shared_ptr<Box> p, int pid = 0) : Box(p, pid) {};
+    Map(string s) { loadFromString(s) }; // Load a map from a string
+    void loadFromString(string s); // Load a map from a string
+    string toString(); // Return a string representation of the map
+    const vector<Box>& getBoxes() { return boxes; };
+    int getBoxIdCurrentPlayerIn(); // Get the box id that the current player is in
 };
 
 class Game {
+public:
     // The class for an active game
-    unique_ptr<Subspace> root; // The root subspace
+    vector<Map> moves; // Used for storing the history of moves
+
+    Game(string s) { loadFromString(s) }; // Load a game from a string
+    void loadFromString(string s); // Load a game from a string
+    string toString(); // Return a string representation of the game
+    bool move(Direction d); // Move the player in a direction d
+    bool undo();
+    bool reset();
+    const Map& getMap() { return moves.back(); };
 };
