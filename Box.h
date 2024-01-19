@@ -9,7 +9,8 @@ using std::shared_ptr;
 enum Direction { UP, DOWN, LEFT, RIGHT };
 enum Destination { NONE, PLAYER, BLOCK };
 enum Space { EMPTY, WALL, DEST_PLAYER, DEST_BLOCK };
-const int BLOCK_ID = 100, SUBSPACE_ID = 200, COPY_ID = 1000;
+const int BLOCK_ID = 100, SUBSPACE_ID = 1000;
+const int INF_ID = 100, EPS_ID = 101;
 
 /* id system:
  * Each subspace and special block has a unique id.
@@ -24,8 +25,7 @@ const int BLOCK_ID = 100, SUBSPACE_ID = 200, COPY_ID = 1000;
  * 2) The movable part
     * 0: empty
     * 100 + x: normal solid block x (may be player)
-    * 200 + x: subspace x
-    * 1000 * x + y: the y-th copy of subspace x
+    * 1000 * x + y: the y-th copy of subspace x, y = 0: original, y > 0: mirrored
  * All movable things are stored in a Box object.
 */
 
@@ -76,24 +76,50 @@ public:
 
 class CopyOfSubspace : public Box {
     // A copy of a subspace, that is enterable but not exitable
-
     int originalId; // The original subspace
+    int copyId; // The id of the copy
     bool mirrored; // Whether it's mirrored
 
 public:
-    CopyOfSubspace (int id, int parentId, int originalId, bool mirrored, int playerId = 0) :
-            Box(parentId, playerId), originalId(originalId), mirrored(mirrored) {};
+    CopyOfSubspace (int originalId, int copyId, int parentId, bool mirrored, int playerId = 0) :
+            Box(parentId, playerId), copyId(copyId), originalId(originalId), mirrored(mirrored) {};
     int getOriginalId() { return originalId; };
     void setMirrored(bool m) { mirrored = m; };
     bool getMirrored() { return mirrored; };
 };
 
+class InfCopyOfSubspace : public Box {
+    // The infinite copies of a subspace
+    int originalId; // The original subspace
+    bool mirrored; // Whether it's mirrored
+    int infLevel; // +: inf, -: eps
+
+public:
+    InfCopyOfSubspace (int originalId, int infLevel, int parentId, bool mirrored, int playerId = 0) :
+            Box(parentId, playerId), originalId(originalId), mirrored(mirrored), infLevel(infLevel) {};
+    int getOriginalId() { return originalId; };
+    void setMirrored(bool m) { mirrored = m; };
+    bool getMirrored() { return mirrored; };
+    int getInfLevel() { return infLevel; };
+};
+
+class InfSpace : public Subspace {
+    // The infinite space
+    int infLevel; // +: inf, -: eps
+
+public:
+    InfSpace(int id, int parentId, size_t len, string subBoxes, bool mirrored, int infLevel, int playerId = 0) :
+            Subspace(id, parentId, len, subBoxes, mirrored, playerId), infLevel(infLevel) {};
+    int getInfLevel() { return infLevel; };
+};
+
 class Map {
 public:   
     vector<Box> boxes; // Subspaces and other movable boxes
+    // 0: The max inf space, 1: max eps space, 2...: normal boxes
     vector<int> playerBoxes; // All boxes that are players, the lower the index the higher priority it has
 
-    Map(string s) { loadFromString(s) }; // Load a map from a string
+    Map(string s) { loadFromString(s); }; // Load a map from a string
     void loadFromString(string s); // Load a map from a string
     string toString(); // Return a string representation of the map
     const vector<Box>& getBoxes() { return boxes; };
