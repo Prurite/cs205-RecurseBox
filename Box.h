@@ -12,6 +12,15 @@ enum Space { EMPTY, WALL, DEST_PLAYER, DEST_BLOCK };
 const int BLOCK_ID = 100, SUBSPACE_ID = 1000;
 const int INF_ID = 100, EPS_ID = 101;
 
+inline Direction invert(Direction d) {
+    switch (d) {
+        case UP: return DOWN;
+        case DOWN: return UP;
+        case LEFT: return RIGHT;
+        case RIGHT: return LEFT;
+    }
+}
+
 /* id system:
  * Each subspace and special block has a unique id.
  * The contents of a subspace are saved as ids.
@@ -26,6 +35,7 @@ const int INF_ID = 100, EPS_ID = 101;
     * 0: empty
     * 100 + x: normal solid block x (may be player)
     * 1000 * x + y: the y-th copy of subspace x, y = 0: original, y > 0: mirrored
+    * id's start from 1.
  * All movable things are stored in a Box object.
 */
 
@@ -34,8 +44,11 @@ class Box {
     int parentId; // The parent box's id, 0 for root
     int playerId; // 0 if it's not a player; -1, if it's not active; otherwise the order of player moving.
 
+protected:
+    Map& map; // The map that the box is in, used for visiting other boxes
+
 public:
-    Box(int parentId, int playerId = 0) : parentId(parentId), playerId(playerId) {};
+    Box(Map& map, int parentId, int playerId = 0) : map(map), parentId(parentId), playerId(playerId) {};
     int getParent() { return parentId; };
     int getPlayerId() { return playerId; };
     int setPlayerId(int p) { playerId = p; };
@@ -57,9 +70,11 @@ class Subspace : public Box {
     // Positions start from 0
     bool mirrored; // Whether it's mirrored
 
+    vector<int> visitedBoxes; // Record of visited boxes in a move attempt to solve the cycles
+
 public:
-    Subspace(int id, int parentId, size_t len, string subBoxes, bool mirrored, int playerId = 0) :
-            Box(parentId, playerId), subspaceId(id), len(len), mirrored(mirrored) {
+    Subspace(Map& map, int id, int parentId, size_t len, string subBoxes, bool mirrored, int playerId = 0) :
+            Box(map, parentId, playerId), subspaceId(id), len(len), mirrored(mirrored) {
         loadFromString(subBoxes);
     };
 
@@ -67,7 +82,9 @@ public:
     void loadFromString(string s); // Load a subspace from a string
     // The map is saved per each subspace, and references to other subspaces are described by spaceid.
     bool move(int x, int y, Direction d); // Move the box at (x,y) in a direction d
+    bool enter(int boxId, Direction d, int x = -1); // Enter the subspace at (x) in a direction d, when x = -1, it's the middle
     bool checkComplete(); // Check if all boxes are in the right place
+
     size_t getLen() { return len; };
     const vector< vector<Space> >& getInnerSpace() { return innerSpace; };
     const vector< vector<int> >& getSubBoxes() { return subBoxes; };
@@ -81,8 +98,8 @@ class CopyOfSubspace : public Box {
     bool mirrored; // Whether it's mirrored
 
 public:
-    CopyOfSubspace (int originalId, int copyId, int parentId, bool mirrored, int playerId = 0) :
-            Box(parentId, playerId), copyId(copyId), originalId(originalId), mirrored(mirrored) {};
+    CopyOfSubspace (Map& map, int originalId, int copyId, int parentId, bool mirrored, int playerId = 0) :
+            Box(map, parentId, playerId), copyId(copyId), originalId(originalId), mirrored(mirrored) {};
     int getOriginalId() { return originalId; };
     void setMirrored(bool m) { mirrored = m; };
     bool getMirrored() { return mirrored; };
@@ -95,8 +112,8 @@ class InfCopyOfSubspace : public Box {
     int infLevel; // +: inf, -: eps
 
 public:
-    InfCopyOfSubspace (int originalId, int infLevel, int parentId, bool mirrored, int playerId = 0) :
-            Box(parentId, playerId), originalId(originalId), mirrored(mirrored), infLevel(infLevel) {};
+    InfCopyOfSubspace (Map& map, int originalId, int infLevel, int parentId, bool mirrored, int playerId = 0) :
+            Box(map, parentId, playerId), originalId(originalId), mirrored(mirrored), infLevel(infLevel) {};
     int getOriginalId() { return originalId; };
     void setMirrored(bool m) { mirrored = m; };
     bool getMirrored() { return mirrored; };
@@ -108,8 +125,9 @@ class InfSpace : public Subspace {
     int infLevel; // +: inf, -: eps
 
 public:
-    InfSpace(int id, int parentId, size_t len, string subBoxes, bool mirrored, int infLevel, int playerId = 0) :
-            Subspace(id, parentId, len, subBoxes, mirrored, playerId), infLevel(infLevel) {};
+    InfSpace(Map& map, int id, int parentId, size_t len, string subBoxes,
+                bool mirrored, int infLevel, int playerId = 0) :
+            Subspace(map, id, parentId, len, subBoxes, mirrored, playerId), infLevel(infLevel) {};
     int getInfLevel() { return infLevel; };
 };
 
@@ -124,18 +142,21 @@ public:
     string toString(); // Return a string representation of the map
     const vector<Box>& getBoxes() { return boxes; };
     int getBoxIdCurrentPlayerIn(); // Get the box id that the current player is in
+    Subspace& getSubspace(int id); // Get the subspace with id
 };
 
 class Game {
 public:
     // The class for an active game
     vector<Map> moves; // Used for storing the history of moves
+    int curMove; // Current move id
 
     Game(string s) { loadFromString(s) }; // Load a game from a string
     void loadFromString(string s); // Load a game from a string
     string toString(); // Return a string representation of the game
     bool move(Direction d); // Move the player in a direction d
     bool undo(); // Undo the last move
+    bool redo(); // Redo the last move
     bool reset(); // Reset to the first move
     const Map& getMap() { return moves.back(); }; // Get the current map
 };
