@@ -1,4 +1,5 @@
-#include<iostream>
+#include <iostream>
+#include <fstream>
 #include <unistd.h>
 #include <unordered_map>
 #include "Box.h"
@@ -16,8 +17,11 @@ static unordered_map<string, Direction> DirectionMap = {
     {"D", RIGHT}
 };
 int main(){
-    Map map("1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1");
-    Game game("0 1 " + map.toString());
+    // Read the save game from file
+    ifstream fin("game.txt");
+    string s;
+    getline(fin, s, '\0');
+    Game game(s);
     cout<<"Link Start? (y/n)"<<endl;
     string c;
     cin>>c;

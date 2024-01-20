@@ -4,7 +4,6 @@ using std::stack;
 
 // TODO: loop; infinity
 
-
 MoveResult Subspace::move(int x, int y, Direction d) {
     // Try to move the box at x row, y col to a direction d by 1 step
     int dx, dy;
@@ -50,12 +49,12 @@ MoveResult Subspace::move(int x, int y, Direction d) {
         // b) A loop happened
         return LOOP;
     else if (isSubspace(nx, ny)) {
-        res = map.getSubspace(subBoxes[nx][ny]).enter(curId, d);
+        res = map.getSubspace(subBoxes[nx][ny])->enter(curId, d);
         // b) It's enterable
         if (res == SUCCESS) subBoxes[x][y] = EMPTY;
         return res;
     } else if (isSubspace(x, y)) {
-        res = map.getSubspace(curId).enter(subBoxes[nx][ny], invert(d));
+        res = map.getSubspace(curId)->enter(subBoxes[nx][ny], invert(d));
         // c) It's eatable
         subBoxes[nx][ny] = curId;
         if (res == SUCCESS) subBoxes[x][y] = EMPTY;
@@ -101,20 +100,11 @@ MoveResult Subspace::enter(int boxId, Direction d, double p) {
             case UP: case DOWN: base_p = 1.0 * ny / len; break;
             case LEFT: case RIGHT: base_p = 1.0 * nx / len; break;
         }
-        Subspace& subspace = map.getSubspace(subBoxes[nx][ny]);
-        p = (p - base_p) * len / subspace.getLen();
-        return subspace.enter(boxId, d, p);
+        Subspace* subspace = map.getSubspace(subBoxes[nx][ny]);
+        p = (p - base_p) * len / subspace->getLen();
+        return subspace->enter(boxId, d, p);
     }
     return FAIL;
-}
-
-MoveResult Subspace::infitityExit(int boxId, Direction d) {
-    // This function shall be called on the 0-th order of inf, and it loops through to find the right order
-    // If a box goes out from itself (or all orders of lower inf), it goes out from the higher inf
-    // Now boxId is going to leave itself in direction d
-
-    // TODO: multiple inf
-    return map.getInfSpace().enter(boxId, d);    
 }
 
 MoveResult Subspace::exit(int boxId, Direction d, double p, int x, int y) {
@@ -127,9 +117,9 @@ MoveResult Subspace::exit(int boxId, Direction d, double p, int x, int y) {
     size_t parentLen;
     double base_p = 0;
     // Get the position of the leaving subspace in the outer space, in (px, py)
-    Subspace& parent = map.getSubspace(getParentId());
-    parent.getBoxXY(subspaceId, px, py);
-    parentLen = map.getSubspace(getParentId()).getLen();
+    Subspace* parent = map.getSubspace(getParentId());
+    parent->getBoxXY(id, px, py);
+    parentLen = map.getSubspace(getParentId())->getLen();
     switch(d) {
         case UP: n_px = px - 1; n_py = py; base_p = 1.0 * py / parentLen; break;
         case DOWN: n_px = px + 1; n_py = py; base_p = 1.0 * py / parentLen; break;
@@ -148,13 +138,15 @@ MoveResult Subspace::exit(int boxId, Direction d, double p, int x, int y) {
         // It's also leaving the outer space
         // Check for infinity
         double p0 = base_p + p * len / parentLen;
-        if (subspaceId == getParentId() && int(p * l) == int(p0 * l))
-            success = infitityExit(boxId, d, p0);
+        if (id == getParentId() && int(p * len) == int(p0 * len))
+            // success = infinityExit(boxId, d, p0);
+            // Inf: TODO
+            return FAIL;
         else
-            success = parent.exit(boxId, d, base_p + p * len / parentLen);
+            success = parent->exit(boxId, d, base_p + p * len / parentLen);
     } else
         // Insert it into the outer space
-        success = parent.insert(boxId, d, n_px, n_py);
+        success = parent->insert(boxId, d, n_px, n_py);
     if (success == SUCCESS && x != -1 && y != -1)
         subBoxes[x][y] = EMPTY;
     return success;
@@ -184,6 +176,99 @@ MoveResult Subspace::insert(int boxId, Direction d, int x, int y) {
         return LOOP;
      else if (isSubspace(x, y))
         // c) Not movable, consider entering
-        return map.getSubspace(subBoxes[x][y]).enter(boxId, d);
+        return map.getSubspace(subBoxes[x][y])->enter(boxId, d);
     return FAIL;
+}
+
+
+bool Subspace::getBoxXY(int boxId, int& x, int& y) {
+    // Get the position of a box
+    for (size_t i = 0; i < len; ++i)
+        for (size_t j = 0; j < len; ++j)
+            if (subBoxes[i][j] == boxId) {
+                x = i;
+                y = j;
+                return true;
+            }
+    return false;
+}
+
+Subspace* Map::getSubspace(int id) {
+    for (size_t i = 0; i < boxes.size(); ++i) {
+        Subspace* subspace = dynamic_cast<Subspace*>(boxes[i]);
+        if (subspace != NULL && subspace->getId() == id)
+            return subspace;
+    }
+    return nullptr;
+}
+
+int Map::getBoxIdCurrentPlayer(int playerId) {
+    for (size_t i = 0; i < boxes.size(); ++i)
+        if (boxes[i]->getPlayerId() == playerId)
+            return boxes[i]->getId();
+    return -1;
+}
+
+bool Subspace::isComplete() {
+    for (size_t i = 0; i < subBoxes.size(); i++)
+        for (size_t j = 0; j < subBoxes[i].size(); j++) {
+            if (innerSpace[i][j] == DEST_BLOCK && (
+                subBoxes[i][j] == EMPTY || map.getBox(subBoxes[i][j])->getPlayerId()
+            ) )
+                return false;
+            if (innerSpace[i][j] == DEST_PLAYER && ( 
+                subBoxes[i][j] == EMPTY || map.getBox(subBoxes[i][j])->getPlayerId() == 0
+            ) )
+                return false;
+        }
+    return true;
+}
+
+bool Map::isComplete() {
+    for (size_t i = 0; i < boxes.size(); ++i) {
+        Subspace* subspace = dynamic_cast<Subspace*>(boxes[i]);
+        if (subspace != NULL && !subspace->isComplete())
+            return false;
+    }
+    return true;
+}
+
+bool Game::move(Direction d) {
+    // Find the subspace the player is in
+    Map curMap = moves[curMove];
+    int curId = curMap.getBoxIdCurrentPlayer();
+    if (curId == -1)
+        return false;
+    int spaceId = curMap.boxes[curId]->getParentId();
+    if (spaceId == -1)
+        return false;
+    Subspace* space = curMap.getSubspace(spaceId);
+    int px, py; // Player's (x, y)
+    space->getBoxXY(curId, px, py);
+    bool flag = space->move(px, py, d) == SUCCESS;
+    if (flag) {
+        moves.erase(moves.begin() + curMove + 1, moves.end());
+        moves.push_back(curMap);
+    }
+    return flag;
+}
+
+bool Game::undo( ) {
+    if (curMove == 0)
+        return false;
+    curMove--;
+    return true;
+}
+
+bool Game::redo( ) {
+    if (curMove == moves.size() - 1)
+        return false;
+    curMove++;
+    return true;
+}
+
+bool Game::reset( ) {
+    curMove++;
+    moves.push_back(moves[0]);
+    return true;
 }
