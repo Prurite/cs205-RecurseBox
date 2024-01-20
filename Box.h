@@ -13,6 +13,7 @@ enum MoveResult { SUCCESS, FAIL, LOOP };
 // Success: things are moved; Fail: things are not moved; Loop: things are moved but the space is not vacant
 const int BLOCK_ID = 100, SUBSPACE_ID = 1000;
 const int INF_ID = 100, EPS_ID = 101;
+const double EPS = 1e-5;
 
 inline Direction invert(Direction d) {
     switch (d) {
@@ -142,8 +143,10 @@ public:
 class Map {
 public:   
     vector<Box> boxes; // Subspaces and other movable boxes
-    // 0: The max inf space, 1: max eps space, 2...: normal boxes
     vector<int> playerBoxes; // All boxes that are players, the lower the index the higher priority it has
+    vector<int> infBoxes, epsBoxes; // Boxes that are inf or eps, the index is its order - 1
+    // NOTES: on initializing, the maximum existing order should be read from the string
+    // and corresponding inf boxes are allocated
 
     vector<int> movingBoxes; // The temp array for detecting moving loops,
     // it should be cleared before each move
@@ -155,6 +158,7 @@ public:
     const vector<Box>& getBoxes() { return boxes; };
     int getBoxIdCurrentPlayerIn(); // Get the box id that the current player is in
     Subspace& getSubspace(int id); // Get the subspace with id, may be a copy or an original id
+    Subspace& getInfSpace();
 };
 
 class Game {

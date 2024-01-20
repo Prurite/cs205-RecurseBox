@@ -108,10 +108,19 @@ MoveResult Subspace::enter(int boxId, Direction d, double p) {
     return FAIL;
 }
 
+MoveResult Subspace::infitityExit(int boxId, Direction d) {
+    // This function shall be called on the 0-th order of inf, and it loops through to find the right order
+    // If a box goes out from itself (or all orders of lower inf), it goes out from the higher inf
+    // Now boxId is going to leave itself in direction d
+
+    // TODO: multiple inf
+    return map.getInfSpace().enter(boxId, d);    
+}
+
 MoveResult Subspace::exit(int boxId, Direction d, double p, int x, int y) {
     // Pop a box out of the subspace in a direction d, with relative position p
     // When x and y are not -1, (x,y) is the position of the original box being pushed out
-    // x, y is the expected leaving position (x or y outside the border)
+    // Otherwise, the box is passed from the inner space
     // On success, the box is inserted into the outer space, and the original box is cleared
 
     int px, py, n_px, n_py;
@@ -127,12 +136,23 @@ MoveResult Subspace::exit(int boxId, Direction d, double p, int x, int y) {
         case LEFT: n_px = px; n_py = py - 1; base_p = 1.0 * px / parentLen; break;
         case RIGHT: n_px = px; n_py = py + 1; base_p = 1.0 * px / parentLen; break;
     }
+    if (x != -1 && y != -1)
+        // Calculate p from x and y
+        switch (d) {
+            case UP: case DOWN: p = 1.0 * y / len; break;
+            case LEFT: case RIGHT: p = 1.0 * x / len; break;
+        }
 
     MoveResult success = FAIL;
-    if (n_px < 0 || n_px >= parentLen || n_py < 0 || n_py >= parentLen)
+    if (n_px < 0 || n_px >= parentLen || n_py < 0 || n_py >= parentLen) {
         // It's also leaving the outer space
-        success = parent.exit(boxId, d, base_p + p * len / parentLen);
-    else
+        // Check for infinity
+        double p0 = base_p + p * len / parentLen;
+        if (subspaceId == getParentId() && int(p * l) == int(p0 * l))
+            success = infitityExit(boxId, d, p0);
+        else
+            success = parent.exit(boxId, d, base_p + p * len / parentLen);
+    } else
         // Insert it into the outer space
         success = parent.insert(boxId, d, n_px, n_py);
     if (success == SUCCESS && x != -1 && y != -1)
