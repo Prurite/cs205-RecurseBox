@@ -27,7 +27,9 @@ inline Direction invert(Direction d) {
 
 /* id system:
  * Each subspace and special block has a unique id.
- * The contents of a subspace are saved as ids.
+ * Solid movable blocks have id BLOCK_ID + x
+ * Subspaces have id SUBSPACE_ID * x
+ * Copies of subspace x have id SUBSPACE_ID * x + y, y = 0: original, y > 0: mirrored
  * 
  * Two arrays are used to store the inner structure of a box:
  * 1) The non-movable part
@@ -37,9 +39,7 @@ inline Direction invert(Direction d) {
     * 3: destination for block
  * 2) The movable part
     * 0: empty
-    * 100 + x: normal solid block x (may be player)
-    * 1000 * x + y: the y-th copy of subspace x, y = 0: original, y > 0: mirrored
-    * id's start from 1.
+    * id: a movable block
  * All movable things are stored in a Box object.
 */
 
@@ -91,7 +91,6 @@ class Subspace : public Box {
 public:
     Subspace(Map &map) : Box(map), len(0), mirrored(0), infEpsLevel(0) {};
     Subspace(Map &map, string s) : Box(map) { loadFromString(s); };
-    Subspace(Map &map, stringstream &ss) : Box(map){ loadFromString(ss); };
 
     string toString() override; // Return a string representation of the subspace
     bool loadFromString(string s) override; // Load a subspace from a string
