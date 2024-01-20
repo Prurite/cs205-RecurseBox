@@ -106,7 +106,7 @@ public:
 
     MoveResult move(int x, int y, Direction d);
     // Move the box at (x,y) in a direction d
-    MoveResult insert(int boxId, Direction d, int x, int y);
+    MoveResult insert(int boxId, Direction d, int x, int y, double p = 0.5);
     // Try to insert a box into the subspace at (x,y) in a direction d
     MoveResult enter(int boxId, Direction d, double p = 0.5);
     // Push a box into the subspace in a direction d, with relative position p
@@ -155,13 +155,17 @@ public:
     // NOTES: on initializing, the maximum existing order should be read from the string
     // and corresponding inf boxes are allocated
 
-    vector<int> movingBoxes; // The temp array for detecting moving loops,
+    struct MoveLog { int type, parentId, boxId; Direction d; }; // The log of a move
+    // Type: 0: move, 1: insert, 2: enter, 3: exit
+    vector<MoveLog> moveLogs; // The temp array for detecting moving loops,
     // it should be cleared before each move
-    int loopBorder; // The id of the border box in a loop
+    MoveLog loopBorder;
 
-    Map() { }
+    Subspace defaultSpace; // The default outer-most space
+
+    Map( );
     Map(const Map& m);
-    ~Map() { }
+    ~Map( ) { }
 
     string toString(); // Return a string representation of the map
     bool loadFromString(stringstream &ss); // Load a map from a string
@@ -178,6 +182,7 @@ public:
         return nullptr;
     }
     bool isComplete() const;
+    bool inMovingLoop(MoveLog log); // Check if a move is in a loop
 };
 
 class Game {

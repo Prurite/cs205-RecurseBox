@@ -25,7 +25,8 @@ bool SolidBlock::loadFromString(stringstream &ss) {
 }
 
 string SolidBlock::show() {
-    return "b";
+    // return "b";
+    return "";
 }
 
 string Subspace::toString() {
@@ -88,7 +89,7 @@ string Subspace::show() {
             int x = subBoxes[i][j];
             if (x > BLOCK_ID && x < SUBSPACE_ID)
                 ss << " b";
-            else if (x > SUBSPACE_ID) {
+            else if (x >= SUBSPACE_ID) {
                 if (x % SUBSPACE_ID)
                     ss << x / SUBSPACE_ID << "|" << x % SUBSPACE_ID;
                 else
@@ -123,7 +124,8 @@ bool CopyOfSubspace::loadFromString(stringstream &ss) {
 string CopyOfSubspace::show() {
     stringstream ss;
     ss << id / SUBSPACE_ID << '|' << id % SUBSPACE_ID;
-    return ss.str();
+    // return ss.str();
+    return "";
 }
 
 string Map::toString() {

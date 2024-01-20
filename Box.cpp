@@ -4,7 +4,20 @@ using std::stack;
 
 // TODO: loop; infinity
 
+bool operator==(const Map::MoveLog& a, const Map::MoveLog& b) {
+    return a.type == b.type && a.parentId == b.parentId && a.boxId == b.boxId && a.d == b.d;
+}
+
+bool Map::inMovingLoop(MoveLog log) {
+    for (size_t i = 0; i < moveLogs.size(); ++i)
+        if (moveLogs[i] == log)
+            return true;
+    return false;
+}
+
 MoveResult Subspace::move(int x, int y, Direction d) {
+    cout << "Move " << id << ' ' << x << ' ' << y << ' ' << d << endl;
+
     // Try to move the box at x row, y col to a direction d by 1 step
     int dx, dy;
     double p;
@@ -19,25 +32,27 @@ MoveResult Subspace::move(int x, int y, Direction d) {
     if (subBoxes[x][y] == EMPTY) return FAIL;
 
     int curId = subBoxes[x][y];
-    for (size_t i = 0; i < map->movingBoxes.size(); ++i)
-        if (map->movingBoxes[i] == curId) {
-            map->loopBorder = curId;
-            return SUCCESS;
-        }
-    map->movingBoxes.push_back(curId);
+    Map::MoveLog log = {0, id, curId, d};
+    if (map->inMovingLoop(log)) {
+        map->loopBorder = log;
+        return SUCCESS;
+    }
+    map->moveLogs.push_back(log);
 
     // 4 cases: 1) Edge 2) Wall 3) Space 4) Another box
     int nx = x + dx, ny = y + dy;
     if (nx < 0 || nx >= len || ny < 0 || ny >= len) {
     // 1) Edge: push it out of the subspace
         return exit(curId, d, p, x, y);
-    } else if (isWall(nx, ny))
+    } else if (isWall(nx, ny)) {
     // 2) Wall
+        map->moveLogs.pop_back();
         return FAIL;
-    else if (isTileEmpty(nx, ny)) {
+    } else if (isTileEmpty(nx, ny)) {
     // 3) Space
         subBoxes[nx][ny] = curId;
         if (subBoxes[x][y] == curId) subBoxes[x][y] = EMPTY;
+        map->moveLogs.pop_back();
         return SUCCESS;
     }
     // 4) Another box
@@ -46,20 +61,24 @@ MoveResult Subspace::move(int x, int y, Direction d) {
         // a) It's movable
         subBoxes[nx][ny] = curId;
         subBoxes[x][y] = EMPTY;
-        return curId == map->loopBorder ? LOOP : SUCCESS;
-    } else if (res == LOOP)
+        map->moveLogs.pop_back();
+        return log == map->loopBorder ? LOOP : SUCCESS;
+    } else if (res == LOOP) {
         // b) A loop happened
+        map->moveLogs.pop_back();
         return LOOP;
-    else if (isSubspace(nx, ny)) {
+    } else if (isSubspace(nx, ny)) {
         res = map->getSubspace(subBoxes[nx][ny])->enter(curId, d);
         // b) It's enterable
         if (res == SUCCESS) subBoxes[x][y] = EMPTY;
+        map->moveLogs.pop_back();
         return res;
     } else if (isSubspace(x, y)) {
         res = map->getSubspace(curId)->enter(subBoxes[nx][ny], invert(d));
         // c) It's eatable
         subBoxes[nx][ny] = curId;
         if (res == SUCCESS) subBoxes[x][y] = EMPTY;
+        map->moveLogs.pop_back();
         return res;
     }
     return FAIL;
@@ -71,6 +90,14 @@ MoveResult Subspace::move(int x, int y, Direction d) {
 MoveResult Subspace::enter(int boxId, Direction d, double p) {
     // Push a box into the subspace in a direction d, with relative position p
     // On success, the box is inserted into the subspace, but the original box is not cleared
+
+    cout << "Enter " << id << ' ' << boxId << ' ' << d << ' ' << p << endl;
+    Map::MoveLog log = {2, id, boxId, d};
+    if (map->inMovingLoop(log)) {
+        map->loopBorder = log;
+        return SUCCESS;
+    }
+    map->moveLogs.push_back(log);
 
     int nx, ny; // The position of the entering box in the subspace
     switch (d) {
@@ -84,6 +111,8 @@ MoveResult Subspace::enter(int boxId, Direction d, double p) {
     else if (isTileEmpty(nx, ny)) {
     // 2) Space
         subBoxes[nx][ny] = boxId;
+        map->getBox(boxId)->setParentId(id);
+        map->moveLogs.pop_back();
         return SUCCESS;
     }
     // 3) Another box
@@ -91,11 +120,14 @@ MoveResult Subspace::enter(int boxId, Direction d, double p) {
     if (res == SUCCESS) {
         // a) It's movable
         subBoxes[nx][ny] = boxId;
-        return SUCCESS;
-    } else if (res == LOOP)
+        map->getBox(boxId)->setParentId(id);
+        map->moveLogs.pop_back();
+        return log == map->loopBorder ? LOOP : SUCCESS;
+    } else if (res == LOOP) {
         // b) It's a loop
+        map->moveLogs.pop_back();
         return LOOP;
-    else if (isSubspace(nx, ny)) {
+    } else if (isSubspace(nx, ny)) {
         // c) Not movable, onsider entering
         double base_p;
         switch (d) {
@@ -103,9 +135,10 @@ MoveResult Subspace::enter(int boxId, Direction d, double p) {
             case LEFT: case RIGHT: base_p = 1.0 * nx / len; break;
         }
         Subspace* subspace = map->getSubspace(subBoxes[nx][ny]);
-        p = (p - base_p) * len / subspace->getLen();
+        p = (p - base_p) * len;
         return subspace->enter(boxId, d, p);
     }
+    map->moveLogs.pop_back();
     return FAIL;
 }
 
@@ -115,9 +148,19 @@ MoveResult Subspace::exit(int boxId, Direction d, double p, int x, int y) {
     // Otherwise, the box is passed from the inner space
     // On success, the box is inserted into the outer space, and the original box is cleared
 
+    cout << "Exit " << id << ' ' << boxId << ' ' << d << ' ' << p << ' ' << x << ' ' << y << endl;
+    Map::MoveLog log = {3, id, boxId, d};
+    if (map->inMovingLoop(log)) {
+        map->loopBorder = log;
+        return SUCCESS;
+    }
+    map->moveLogs.push_back(log);
+
     int px, py, n_px, n_py;
     size_t parentLen;
     double base_p = 0;
+    if (getParentId() <= 0) return FAIL;
+    // TODO: the default space
     // Get the position of the leaving subspace in the outer space, in (px, py)
     Subspace* parent = map->getSubspace(getParentId());
     parent->getBoxXY(id, px, py);
@@ -144,20 +187,34 @@ MoveResult Subspace::exit(int boxId, Direction d, double p, int x, int y) {
             // success = infinityExit(boxId, d, p0);
             // Inf: TODO
             return FAIL;
-        else
-            success = parent->exit(boxId, d, base_p + p * len / parentLen);
+        else {
+            success = parent->exit(boxId, d, p0);
+            if (success == SUCCESS && log == map->loopBorder)
+                success = LOOP;
+        }
     } else
         // Insert it into the outer space
-        success = parent->insert(boxId, d, n_px, n_py);
+        success = parent->insert(boxId, d, n_px, n_py, p);
     if (success == SUCCESS && x != -1 && y != -1)
         subBoxes[x][y] = EMPTY;
+    if (success == SUCCESS && log == map->loopBorder)
+        success = LOOP;
+    map->moveLogs.pop_back();
     return success;
 }
 
-MoveResult Subspace::insert(int boxId, Direction d, int x, int y) {
+MoveResult Subspace::insert(int boxId, Direction d, int x, int y, double p) {
     // Try to insert a box into the subspace at (x,y) in a direction d
     // The box may be one that the inner space pushes out or one that the outer space pushes in
     // On success, the box is inserted into the subspace, but the original box is not cleared
+
+    cout << "Insert " << id << ' ' << boxId << ' ' << d << ' ' << x << ' ' << y << endl;
+    Map::MoveLog log = {1, id, boxId, d};
+    if (map->inMovingLoop(log)) {
+        map->loopBorder = log;
+        return SUCCESS;
+    }
+    map->moveLogs.push_back(log);
 
     // x, y in [0, len)
     if (isWall(x, y)) return FAIL;
@@ -165,6 +222,8 @@ MoveResult Subspace::insert(int boxId, Direction d, int x, int y) {
     else if (isTileEmpty(x, y)) {
     // 2) Space
         subBoxes[x][y] = boxId;
+        map->getBox(boxId)->setParentId(id);
+        map->moveLogs.pop_back();
         return SUCCESS;
     }
     // 3) Another box
@@ -172,13 +231,22 @@ MoveResult Subspace::insert(int boxId, Direction d, int x, int y) {
     if (res == SUCCESS) {
         // a) It's movable;
         subBoxes[x][y] = boxId;
-        return SUCCESS;
-    } else if (res == LOOP)
+        map->getBox(boxId)->setParentId(id);
+        map->moveLogs.pop_back();
+        return log == map->loopBorder ? LOOP : SUCCESS;
+    } else if (res == LOOP) {
         // b) It's a loop
+        map->moveLogs.pop_back();
         return LOOP;
-     else if (isSubspace(x, y))
+    } else if (isSubspace(x, y)) {
         // c) Not movable, consider entering
-        return map->getSubspace(subBoxes[x][y])->enter(boxId, d);
+        res = map->getSubspace(subBoxes[x][y])->enter(boxId, d, p);
+        if (res == SUCCESS && log == map->loopBorder)
+            res = LOOP;
+        map->moveLogs.pop_back();
+        return res;
+    }
+    map->moveLogs.pop_back();
     return FAIL;
 }
 
@@ -195,7 +263,29 @@ bool Subspace::getBoxXY(int boxId, int& x, int& y) {
     return false;
 }
 
-Map::Map(const Map& m) : playerBoxes(m.playerBoxes), infBoxes(m.infBoxes), epsBoxes(m.epsBoxes) {
+Map::Map( ) : defaultSpace(this) {
+    string s = R"(
+        Subspace 100000 0 0 7 0 0
+        1 1 1 1 1 1 1
+        1 0 0 0 0 0 1
+        1 0 0 0 0 0 1
+        1 0 0 0 0 0 1
+        1 0 0 0 0 0 1
+        1 0 0 0 0 0 1
+        1 1 1 1 1 1 1
+        0 0 0 0 0 0 0
+        0 0 0 0 0 0 0
+        0 0 0 0 0 0 0
+        0 0 0 0 0 0 0
+        0 0 0 0 0 0 0
+        0 0 0 0 0 0 0
+        0 0 0 0 0 0 0
+    )";
+    stringstream ss(s);
+    defaultSpace.loadFromString(ss);
+}
+
+Map::Map(const Map& m) : playerBoxes(m.playerBoxes), infBoxes(m.infBoxes), epsBoxes(m.epsBoxes), defaultSpace(m.defaultSpace) {
     for (size_t i = 0; i < m.boxes.size(); ++i) {
         Subspace* p1 = dynamic_cast<Subspace*>(m.boxes[i].get());
         CopyOfSubspace* p2 = dynamic_cast<CopyOfSubspace*>(m.boxes[i].get());
@@ -216,7 +306,7 @@ Subspace* Map::getSubspace(int id) {
         if (subspace != NULL && subspace->getId() == id)
             return subspace;
     }
-    return nullptr;
+    return &defaultSpace;
 }
 
 int Map::getCurrentPlayerBoxId(int playerId) {
@@ -253,7 +343,7 @@ bool Map::isComplete() const {
 bool Game::move(Direction d) {
     // Find the subspace the player is in
     Map curMap(moves[curMove]);
-    curMap.movingBoxes.clear();
+    curMap.moveLogs.clear();
     int curId = curMap.getCurrentPlayerBoxId();
     if (curId == -1)
         return false;
