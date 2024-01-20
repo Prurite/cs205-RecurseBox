@@ -174,6 +174,7 @@ public:
     int curMove; // Current move id
 
     Game(string s) { loadFromString(s); }; // Load a game from a string
+    Game(stringstream &ss) { loadFromString(ss); }; // Load a game from a stringstream
     void loadFromString(string s); // Load a game from a string
     void loadFromString(stringstream &ss); // Load a game from a stringstream
     string toString(); // Return a string representation of the game
