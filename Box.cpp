@@ -195,14 +195,14 @@ bool Subspace::getBoxXY(int boxId, int& x, int& y) {
 
 Subspace* Map::getSubspace(int id) {
     for (size_t i = 0; i < boxes.size(); ++i) {
-        Subspace* subspace = dynamic_cast<Subspace*>(boxes[i]);
+        Subspace* subspace = dynamic_cast<Subspace*>(boxes[i].get());
         if (subspace != NULL && subspace->getId() == id)
             return subspace;
     }
     return nullptr;
 }
 
-int Map::getBoxIdCurrentPlayer(int playerId) {
+int Map::getCurrentPlayerBoxId(int playerId) {
     for (size_t i = 0; i < boxes.size(); ++i)
         if (boxes[i]->getPlayerId() == playerId)
             return boxes[i]->getId();
@@ -226,7 +226,7 @@ bool Subspace::isComplete() {
 
 bool Map::isComplete() {
     for (size_t i = 0; i < boxes.size(); ++i) {
-        Subspace* subspace = dynamic_cast<Subspace*>(boxes[i]);
+        Subspace* subspace = dynamic_cast<Subspace*>(boxes[i].get());
         if (subspace != NULL && !subspace->isComplete())
             return false;
     }
@@ -236,10 +236,10 @@ bool Map::isComplete() {
 bool Game::move(Direction d) {
     // Find the subspace the player is in
     Map curMap = moves[curMove];
-    int curId = curMap.getBoxIdCurrentPlayer();
+    int curId = curMap.getCurrentPlayerBoxId();
     if (curId == -1)
         return false;
-    int spaceId = curMap.boxes[curId]->getParentId();
+    int spaceId = curMap.getBox(curId)->getParentId();
     if (spaceId == -1)
         return false;
     Subspace* space = curMap.getSubspace(spaceId);

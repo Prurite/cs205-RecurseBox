@@ -147,7 +147,7 @@ public:
 
 class Map {
 public:   
-    vector<Box*> boxes; // Subspaces and other movable boxes
+    vector< shared_ptr<Box> > boxes; // Subspaces and other movable boxes
     // Each box has a unique id, which is described at the top of the file.
     vector<int> playerBoxes; // All boxes that are players, the lower the index the higher priority it has
     vector<int> infBoxes, epsBoxes; // Boxes that are inf or eps, the index is its order - 1
@@ -158,21 +158,22 @@ public:
     // it should be cleared before each move
     int loopBorder; // The id of the border box in a loop
 
-    Map(stringstream &ss) { loadFromString(ss); };
-    ~Map() { for (size_t i = 0; i < boxes.size(); ++i) delete boxes[i]; }
+    Map() { }
+    Map(stringstream &ss) { loadFromString(ss); }
+    ~Map() { }
 
     string toString(); // Return a string representation of the map
     bool loadFromString(stringstream &ss); // Load a map from a string
     string show();
 
-    const vector<Box*>& getBoxes() { return boxes; };
-    int getBoxIdCurrentPlayer(int playerId = 0); // Get the box id that the current player is in
+    const vector< shared_ptr<Box> >& getBoxes() { return boxes; };
+    int getCurrentPlayerBoxId(int playerId = 1); // Get the box id that the current player is
     Subspace* getSubspace(int id); // Get the subspace with id, may be a copy or an original id
     Subspace* getInfSpace(int order = 1);
     Box* getBox(int id) {
         for (size_t i = 0; i < boxes.size(); ++i)
             if (boxes[i]->getId() == id)
-                return boxes[i];
+                return boxes[i].get();
         return nullptr;
     }
     bool isComplete();

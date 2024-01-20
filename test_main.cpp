@@ -22,10 +22,11 @@ int main(){
     string s;
     getline(fin, s, '\0');
     Game game(s);
+    cout << game.toString() << endl;
+    cout << game.show() << endl;
     cout<<"Link Start? (y/n)"<<endl;
     string c;
     cin>>c;
-    game.show();
     while(true){
         if(c == "n") break;
         cout<<"Input your move: "<<endl;
