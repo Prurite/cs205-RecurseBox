@@ -9,6 +9,8 @@ using std::shared_ptr;
 enum Direction { UP, DOWN, LEFT, RIGHT };
 enum Destination { NONE, PLAYER, BLOCK };
 enum Space { EMPTY, WALL, DEST_PLAYER, DEST_BLOCK };
+enum MoveResult { SUCCESS, FAIL, LOOP };
+// Success: things are moved; Fail: things are not moved; Loop: things are moved but the space is not vacant
 const int BLOCK_ID = 100, SUBSPACE_ID = 1000;
 const int INF_ID = 100, EPS_ID = 101;
 
@@ -80,10 +82,10 @@ public:
     void loadFromString(string s); // Load a subspace from a string
     // The map is saved per each subspace, and references to other subspaces are described by spaceid.
 
-    bool move(int x, int y, Direction d); // Move the box at (x,y) in a direction d
-    bool insert(int boxId, Direction d, int x, int y);
-    bool enter(int boxId, Direction d, double p = 0.5);
-    bool exit(int boxId, Direction d, double p);
+    MoveResult move(int x, int y, Direction d); // Move the box at (x,y) in a direction d
+    MoveResult insert(int boxId, Direction d, int x, int y);
+    MoveResult enter(int boxId, Direction d, double p = 0.5);
+    MoveResult exit(int boxId, Direction d, double p, int x = -1, int y = -1);
 
     bool checkComplete(); // Check if all boxes are in the right place
 
@@ -142,9 +144,10 @@ public:
     vector<Box> boxes; // Subspaces and other movable boxes
     // 0: The max inf space, 1: max eps space, 2...: normal boxes
     vector<int> playerBoxes; // All boxes that are players, the lower the index the higher priority it has
-    struct MoveRecord { int subspaceId, x, y; };
-    vector<MoveRecord> moveRecords; // The temp array for detecting moving loops,
+
+    vector<int> movingBoxes; // The temp array for detecting moving loops,
     // it should be cleared before each move
+    int loopBorder; // The id of the border box in a loop
 
     Map(string s) { loadFromString(s); }; // Load a map from a string
     void loadFromString(string s); // Load a map from a string
@@ -152,7 +155,6 @@ public:
     const vector<Box>& getBoxes() { return boxes; };
     int getBoxIdCurrentPlayerIn(); // Get the box id that the current player is in
     Subspace& getSubspace(int id); // Get the subspace with id, may be a copy or an original id
-    bool checkMoveLoop(MoveRecord record); // Check if a move is a loop
 };
 
 class Game {
