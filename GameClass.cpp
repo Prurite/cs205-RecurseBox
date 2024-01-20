@@ -32,9 +32,12 @@ string Box::toString(){
     s += to_string(parentId) + " " + to_string(playerId) + " ";
     return s;
 }
+void Box::show(){
+    cout<<toString()<<endl;
+}
 /*
 format
-[subspace id] [len] [inner space] [subBoxes] [mirrored 0/1]
+[parent id] [player id] [subspace id] [len] [inner space] [subBoxes] [mirrored 0/1]
 */
 void Subspace::loadFromString(string s){
     stringstream ss(s);
@@ -58,13 +61,10 @@ void Subspace::loadFromString(string s){
     ss>>mirrored;
 }
 void Subspace::loadFromString(stringstream &ss){
-    string identity;
-    ss>>identity;
     int parentId, playerId;
-    ss>>parentId>>playerId;
+    ss>>parentId>>playerId>>subspaceId>>len; 
     setParentId(parentId);
-    setPlayerId(playerId);
-    ss>>subspaceId>>len;
+    setPlayerId(playerId);   
     for(int i=0;i<len;i++){
         for(int j=0;j<len;j++){
             Space c;
@@ -83,6 +83,11 @@ void Subspace::loadFromString(stringstream &ss){
     }
     ss>>mirrored;
 }
+/*
+format:
+Subspace [parent id] [player id] [subspace id] [len] [inner space] [subBoxes] [mirrored 0/1]
+
+*/
 string Subspace::toString(){
     string s = "Subspace ";
     s += to_string(getParentId()) + " ";
@@ -102,15 +107,31 @@ string Subspace::toString(){
     s += to_string(mirrored) + " ";
     return s;
 }
+void Subspace::show(){
+    for(int i=0;i<len;i++){
+        for(int j=0;j<len;j++){
+            cout<<innerSpace[i][j]<<" ";
+        }
+        cout<<endl;
+    }
+    for(int i=0;i<len;i++){
+        for(int j=0;j<len;j++){
+            cout<<subBoxes[i][j]<<" ";
+        }
+        cout<<endl;
+    }
+}
 /*
 format:
-[boxes length] [boxes format] [playerBoxed length] [playerBoxed id]
+[loop border] [boxes length] [boxes format] [playerBoxed length] [playerBoxed id] [infBoxes length] [infBoxes format] [epsBoxes length] [epsBoxes format] [movingBoxes length] [movingBoxes format] 
 */
 void Map::loadFromString(string s){
     stringstream ss(s);
     loadFromString(ss);
 }
 void Map::loadFromString(stringstream &ss){
+    int loopBorder;
+    ss>>loopBorder;
     int boxesLength;
     ss>>boxesLength;
     for(int i=0;i<boxesLength;i++){
@@ -122,12 +143,7 @@ void Map::loadFromString(stringstream &ss){
             Box box = Box(*this, parentId, playerId);
             boxes.push_back(box);
         }else{
-            int parentId, playerId, subspaceId;
-            ss>>parentId>>playerId>>subspaceId;
-            size_t length;
-            ss>>length;
-            Subspace subspace = Subspace(*this, parentId, playerId,length, ss, false);
-            subspace.loadFromString(ss);
+            Subspace subspace = Subspace(*this, ss);
             boxes.push_back(subspace);
         }
     }
@@ -138,14 +154,57 @@ void Map::loadFromString(stringstream &ss){
         ss>>id;
         playerBoxes.push_back(id);
     }
+    int infBoxesLength;
+    ss>>infBoxesLength;
+    for(int i=0;i<infBoxesLength;i++){
+        int id;
+        ss>>id;
+        infBoxes.push_back(id);
+    }
+    int epsBoxesLength;
+    ss>>epsBoxesLength;
+    for(int i=0;i<epsBoxesLength;i++){
+        int id;
+        ss>>id;
+        epsBoxes.push_back(id);
+    }
+    int movingBoxesLength;
+    ss>>movingBoxesLength;
+    for(int i=0;i<movingBoxesLength;i++){
+        int id;
+        ss>>id;
+        movingBoxes.push_back(id);
+    }
 }
 string Map::toString(){
     string s = "";
+    s += to_string(loopBorder) + " ";
     s += to_string(boxes.size()) + " ";
     for(int i=0;i<boxes.size();i++){
         s += boxes[i].toString() + " ";
     }
+    s += to_string(playerBoxes.size()) + " ";
+    for(int i=0;i<playerBoxes.size();i++){
+        s += to_string(playerBoxes[i]) + " ";
+    }
+    s += to_string(infBoxes.size()) + " ";
+    for(int i=0;i<infBoxes.size();i++){
+        s += to_string(infBoxes[i]) + " ";
+    }
+    s += to_string(epsBoxes.size()) + " ";
+    for(int i=0;i<epsBoxes.size();i++){
+        s += to_string(epsBoxes[i]) + " ";
+    }
+    s += to_string(movingBoxes.size()) + " ";
+    for(int i=0;i<movingBoxes.size();i++){
+        s += to_string(movingBoxes[i]) + " ";
+    }
     return s;
+}
+void Map::show(){
+    for(int i=0;i<boxes.size();i++){
+        cout<<boxes[i].toString()<<endl;
+    }
 }
 
 /*
@@ -172,5 +231,10 @@ void Game::loadFromString(stringstream &ss){
     for(int i=0;i<movesLength;i++){
         Map map = Map("");
         map.loadFromString(ss);
+    }
+}
+void Game::show(){
+    for(int i=0;i<moves.size();i++){
+        moves[i].show();
     }
 }
