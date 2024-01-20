@@ -101,7 +101,7 @@ string Subspace::show() {
                 ss << " =";
             else if (innerSpace[i][j] == DEST_BLOCK)
                 ss << " _";
-            ss << (x > BLOCK_ID && map.getBox(x)->getPlayerId() ? 'p' : ' ');
+            ss << (x > BLOCK_ID && map->getBox(x)->getPlayerId() ? 'p' : ' ');
         }
         ss << '\n';
     }
@@ -142,11 +142,11 @@ bool Map::loadFromString(stringstream &ss) {
     for (size_t i = 0; i < n; ++i) {
         ss >> type;
         if (type == "SolidBlock")
-            boxes.push_back(make_shared<SolidBlock>(*this));
+            boxes.push_back(make_shared<SolidBlock>(this));
         else if (type == "Subspace")
-            boxes.push_back(make_shared<Subspace>(*this));
+            boxes.push_back(make_shared<Subspace>(this));
         else if (type == "CopyOfSubspace")
-            boxes.push_back(make_shared<CopyOfSubspace>(*this));
+            boxes.push_back(make_shared<CopyOfSubspace>(this));
         else
             return false;
         boxes[i]->loadFromString(ss);

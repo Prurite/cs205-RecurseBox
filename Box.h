@@ -56,12 +56,12 @@ protected:
     int id;
     int parentId; // The parent box's id, 0 for root
     int playerId; // 0 if it's not a player; -1, if it's not active; otherwise the order of player moving.
-    Map& map; // The map that the box is in, used for visiting other boxes
+    Map* map; // The map that the box is in, used for visiting other boxes
 
 public:
-    Box(Map& map, int id, int parentId, int playerId = 0) :
+    Box(Map* map, int id, int parentId, int playerId = 0) :
             map(map), id(id), parentId(parentId), playerId(playerId) {};
-    Box(Map& map) : map(map) { id = parentId = playerId = -1; }
+    Box(Map* map) : map(map) { id = parentId = playerId = -1; }
 
     int getId() { return id; }
     int getParentId() { return parentId; };
@@ -71,15 +71,16 @@ public:
     virtual string toString() = 0; // Return a string representation of the box
     virtual bool loadFromString(stringstream &ss) = 0; // Load a box from a string
     virtual string show() = 0; // Show the box as a printable string
+    void setMap(Map* m) { map = m; };
 };
 
 class SolidBlock : public Box {
     // A solid block containing no internal structures
 
 public:
-    SolidBlock(Map& map, int id, int parentId, int playerId = 0) :
+    SolidBlock(Map* map, int id, int parentId, int playerId = 0) :
             Box(map, id, parentId, playerId) {};
-    SolidBlock(Map& map) : Box(map) {};
+    SolidBlock(Map* map) : Box(map) {};
     
     string toString() override;
     bool loadFromString(stringstream &ss) override;
@@ -96,7 +97,7 @@ class Subspace : public Box {
     // Positions start from 0
 
 public:
-    Subspace(Map &map) : Box(map), len(0), mirrored(0), infEpsLevel(0) {};
+    Subspace(Map *map) : Box(map), len(0), mirrored(0), infEpsLevel(0) {};
 
     string toString() override; // Return a string representation of the subspace
     bool loadFromString(stringstream &ss) override; // Load a subspace from a string
@@ -132,9 +133,9 @@ class CopyOfSubspace : public Box {
     int infEpsLevel; // 0: standard, +: inf, -: eps
 
 public:
-    CopyOfSubspace(Map& map, int id, int parentId, int originalId, bool mirrored, int playerId = 0, int infEpsLevel = 0) :
+    CopyOfSubspace(Map* map, int id, int parentId, int originalId, bool mirrored, int playerId = 0, int infEpsLevel = 0) :
             Box(map, id, parentId, playerId), originalId(originalId), mirrored(mirrored), infEpsLevel(infEpsLevel) {};
-    CopyOfSubspace(Map& map) : Box(map) { originalId = mirrored = infEpsLevel = 0; };
+    CopyOfSubspace(Map* map) : Box(map) { originalId = mirrored = infEpsLevel = 0; };
 
     string toString() override;
     bool loadFromString(stringstream &ss) override;
@@ -159,7 +160,7 @@ public:
     int loopBorder; // The id of the border box in a loop
 
     Map() { }
-    Map(stringstream &ss) { loadFromString(ss); }
+    Map(const Map& m);
     ~Map() { }
 
     string toString(); // Return a string representation of the map
@@ -176,7 +177,7 @@ public:
                 return boxes[i].get();
         return nullptr;
     }
-    bool isComplete();
+    bool isComplete() const;
 };
 
 class Game {
@@ -197,5 +198,5 @@ public:
     bool redo(); // Redo the last move
     bool reset(); // Reset to the first move
 
-    const Map& getMap() { return moves.back(); }; // Get the current map
+    const Map& getMap() { return moves[curMove]; }; // Get the current map
 };

@@ -15,15 +15,16 @@ MoveResult Subspace::move(int x, int y, Direction d) {
         case RIGHT: dx = 0; dy = 1; p = 1.0 * x / len; break;
     }
     // If (x,y) is not a movable box, return false
-    if (innerSpace[x][y] != EMPTY) return FAIL;
+    if (innerSpace[x][y] == WALL) return FAIL;
     if (subBoxes[x][y] == EMPTY) return FAIL;
 
     int curId = subBoxes[x][y];
-    for (size_t i = 0; i < map.movingBoxes.size(); ++i)
-        if (map.movingBoxes[i] == curId) {
-            map.loopBorder = curId;
+    for (size_t i = 0; i < map->movingBoxes.size(); ++i)
+        if (map->movingBoxes[i] == curId) {
+            map->loopBorder = curId;
             return SUCCESS;
         }
+    map->movingBoxes.push_back(curId);
 
     // 4 cases: 1) Edge 2) Wall 3) Space 4) Another box
     int nx = x + dx, ny = y + dy;
@@ -44,17 +45,18 @@ MoveResult Subspace::move(int x, int y, Direction d) {
     if (res == SUCCESS) {
         // a) It's movable
         subBoxes[nx][ny] = curId;
-        return curId == map.loopBorder ? LOOP : SUCCESS;
+        subBoxes[x][y] = EMPTY;
+        return curId == map->loopBorder ? LOOP : SUCCESS;
     } else if (res == LOOP)
         // b) A loop happened
         return LOOP;
     else if (isSubspace(nx, ny)) {
-        res = map.getSubspace(subBoxes[nx][ny])->enter(curId, d);
+        res = map->getSubspace(subBoxes[nx][ny])->enter(curId, d);
         // b) It's enterable
         if (res == SUCCESS) subBoxes[x][y] = EMPTY;
         return res;
     } else if (isSubspace(x, y)) {
-        res = map.getSubspace(curId)->enter(subBoxes[nx][ny], invert(d));
+        res = map->getSubspace(curId)->enter(subBoxes[nx][ny], invert(d));
         // c) It's eatable
         subBoxes[nx][ny] = curId;
         if (res == SUCCESS) subBoxes[x][y] = EMPTY;
@@ -100,7 +102,7 @@ MoveResult Subspace::enter(int boxId, Direction d, double p) {
             case UP: case DOWN: base_p = 1.0 * ny / len; break;
             case LEFT: case RIGHT: base_p = 1.0 * nx / len; break;
         }
-        Subspace* subspace = map.getSubspace(subBoxes[nx][ny]);
+        Subspace* subspace = map->getSubspace(subBoxes[nx][ny]);
         p = (p - base_p) * len / subspace->getLen();
         return subspace->enter(boxId, d, p);
     }
@@ -117,9 +119,9 @@ MoveResult Subspace::exit(int boxId, Direction d, double p, int x, int y) {
     size_t parentLen;
     double base_p = 0;
     // Get the position of the leaving subspace in the outer space, in (px, py)
-    Subspace* parent = map.getSubspace(getParentId());
+    Subspace* parent = map->getSubspace(getParentId());
     parent->getBoxXY(id, px, py);
-    parentLen = map.getSubspace(getParentId())->getLen();
+    parentLen = map->getSubspace(getParentId())->getLen();
     switch(d) {
         case UP: n_px = px - 1; n_py = py; base_p = 1.0 * py / parentLen; break;
         case DOWN: n_px = px + 1; n_py = py; base_p = 1.0 * py / parentLen; break;
@@ -176,7 +178,7 @@ MoveResult Subspace::insert(int boxId, Direction d, int x, int y) {
         return LOOP;
      else if (isSubspace(x, y))
         // c) Not movable, consider entering
-        return map.getSubspace(subBoxes[x][y])->enter(boxId, d);
+        return map->getSubspace(subBoxes[x][y])->enter(boxId, d);
     return FAIL;
 }
 
@@ -191,6 +193,21 @@ bool Subspace::getBoxXY(int boxId, int& x, int& y) {
                 return true;
             }
     return false;
+}
+
+Map::Map(const Map& m) : playerBoxes(m.playerBoxes), infBoxes(m.infBoxes), epsBoxes(m.epsBoxes) {
+    for (size_t i = 0; i < m.boxes.size(); ++i) {
+        Subspace* p1 = dynamic_cast<Subspace*>(m.boxes[i].get());
+        CopyOfSubspace* p2 = dynamic_cast<CopyOfSubspace*>(m.boxes[i].get());
+        SolidBlock* p3 = dynamic_cast<SolidBlock*>(m.boxes[i].get());
+        if (p1 != NULL)
+            boxes.push_back(make_shared<Subspace>(*p1));
+        else if (p2 != NULL)
+            boxes.push_back(make_shared<CopyOfSubspace>(*p2));
+        else if (p3 != NULL)
+            boxes.push_back(make_shared<SolidBlock>(*p3));
+        boxes[i]->setMap(this);
+    }
 }
 
 Subspace* Map::getSubspace(int id) {
@@ -213,18 +230,18 @@ bool Subspace::isComplete() {
     for (size_t i = 0; i < subBoxes.size(); i++)
         for (size_t j = 0; j < subBoxes[i].size(); j++) {
             if (innerSpace[i][j] == DEST_BLOCK && (
-                subBoxes[i][j] == EMPTY || map.getBox(subBoxes[i][j])->getPlayerId()
+                subBoxes[i][j] == EMPTY || map->getBox(subBoxes[i][j])->getPlayerId()
             ) )
                 return false;
             if (innerSpace[i][j] == DEST_PLAYER && ( 
-                subBoxes[i][j] == EMPTY || map.getBox(subBoxes[i][j])->getPlayerId() == 0
+                subBoxes[i][j] == EMPTY || map->getBox(subBoxes[i][j])->getPlayerId() == 0
             ) )
                 return false;
         }
     return true;
 }
 
-bool Map::isComplete() {
+bool Map::isComplete() const {
     for (size_t i = 0; i < boxes.size(); ++i) {
         Subspace* subspace = dynamic_cast<Subspace*>(boxes[i].get());
         if (subspace != NULL && !subspace->isComplete())
@@ -235,7 +252,8 @@ bool Map::isComplete() {
 
 bool Game::move(Direction d) {
     // Find the subspace the player is in
-    Map curMap = moves[curMove];
+    Map curMap(moves[curMove]);
+    curMap.movingBoxes.clear();
     int curId = curMap.getCurrentPlayerBoxId();
     if (curId == -1)
         return false;
@@ -249,6 +267,7 @@ bool Game::move(Direction d) {
     if (flag) {
         moves.erase(moves.begin() + curMove + 1, moves.end());
         moves.push_back(curMap);
+        curMove++;
     }
     return flag;
 }

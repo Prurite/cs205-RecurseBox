@@ -32,7 +32,8 @@ int main(){
         cout<<"Input your move: "<<endl;
         cin>>c;
         if(c == "n") break;
-        game.move(DirectionMap[c]);
-        game.show();
+        cout<<game.move(DirectionMap[c])<<endl;
+        cout<<game.show()<<endl;
+        cout<<game.getMap().isComplete()<<endl;
     }
 }
