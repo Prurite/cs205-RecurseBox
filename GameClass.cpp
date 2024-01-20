@@ -1,4 +1,4 @@
-#include "box.h"
+#include "Box.h"
 #include<iostream>
 #include<cstring>
 #include<sstream>
@@ -62,7 +62,7 @@ void Subspace::loadFromString(stringstream &ss){
     ss>>identity;
     int parentId, playerId;
     ss>>parentId>>playerId;
-    setParent(parentId);
+    setParentId(parentId);
     setPlayerId(playerId);
     ss>>subspaceId>>len;
     for(int i=0;i<len;i++){
@@ -85,7 +85,7 @@ void Subspace::loadFromString(stringstream &ss){
 }
 string Subspace::toString(){
     string s = "Subspace ";
-    s += to_string(getParent()) + " ";
+    s += to_string(getParentId()) + " ";
     s += to_string(getPlayerId()) + " "; 
     s += to_string(subspaceId) + " ";
     s += to_string(len) + " ";
@@ -146,4 +146,31 @@ string Map::toString(){
         s += boxes[i].toString() + " ";
     }
     return s;
+}
+
+/*
+format:
+[curMove] [number of maps] [map format] 
+*/
+string Game::toString(){
+    string s = "";
+    s += to_string(curMove) + " ";
+    s += to_string(moves.size()) + " ";
+    for(int i=0;i<moves.size();i++){
+        s += moves[i].toString() + " ";
+    }
+    return s;
+}
+void Game::loadFromString(string s){
+    stringstream ss(s);
+    loadFromString(ss);
+}
+void Game::loadFromString(stringstream &ss){
+    ss>>curMove;
+    int movesLength;
+    ss>>movesLength;
+    for(int i=0;i<movesLength;i++){
+        Map map = Map("");
+        map.loadFromString(ss);
+    }
 }

@@ -55,6 +55,8 @@ public:
     int getParentId() { return parentId; };
     int getPlayerId() { return playerId; };
     int setPlayerId(int p) { playerId = p; };
+    int setParentId(int p) { parentId = p; };
+    string toString(); // Return a string representation of the box
 };
 
 class SolidBlock : public Box {
@@ -78,11 +80,14 @@ public:
             Box(map, parentId, playerId), subspaceId(id), len(len), mirrored(mirrored) {
         loadFromString(subBoxes);
     };
-
+    Subspace(Map& map, int id, int parentId, size_t len, stringstream &subBoxes, bool mirrored, int playerId = 0) :
+            Box(map, parentId, playerId), subspaceId(id), len(len), mirrored(mirrored) {
+        loadFromString(subBoxes);
+    };
     string toString(); // Return a string representation of the subspace
     void loadFromString(string s); // Load a subspace from a string
     // The map is saved per each subspace, and references to other subspaces are described by spaceid.
-
+    void loadFromString(stringstream &ss); // Load a subspace from a stringstream
     MoveResult move(int x, int y, Direction d); // Move the box at (x,y) in a direction d
     MoveResult insert(int boxId, Direction d, int x, int y);
     MoveResult enter(int boxId, Direction d, double p = 0.5);
@@ -154,6 +159,7 @@ public:
 
     Map(string s) { loadFromString(s); }; // Load a map from a string
     void loadFromString(string s); // Load a map from a string
+    void loadFromString(stringstream &ss); // Load a map from a stringstream
     string toString(); // Return a string representation of the map
     const vector<Box>& getBoxes() { return boxes; };
     int getBoxIdCurrentPlayerIn(); // Get the box id that the current player is in
@@ -169,6 +175,7 @@ public:
 
     Game(string s) { loadFromString(s); }; // Load a game from a string
     void loadFromString(string s); // Load a game from a string
+    void loadFromString(stringstream &ss); // Load a game from a stringstream
     string toString(); // Return a string representation of the game
     bool move(Direction d); // Move the player in a direction d
     bool undo(); // Undo the last move
