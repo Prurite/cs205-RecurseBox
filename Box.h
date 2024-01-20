@@ -79,11 +79,12 @@ public:
     string toString(); // Return a string representation of the subspace
     void loadFromString(string s); // Load a subspace from a string
     // The map is saved per each subspace, and references to other subspaces are described by spaceid.
+
     bool move(int x, int y, Direction d); // Move the box at (x,y) in a direction d
-    bool enter(int boxId, Direction d, int x = -2, int y = -2);
-    // Enter the subspace at (x, y) in a direction d,
-    // by default, its the middle of that direction from outside.
-    // x, y may be -1 or len, in such case, it means that a box is about to leave the subspace.
+    bool insert(int boxId, Direction d, int x, int y);
+    bool enter(int boxId, Direction d, double p = 0.5);
+    bool exit(int boxId, Direction d, double p);
+
     bool checkComplete(); // Check if all boxes are in the right place
 
     size_t getLen() { return len; };
@@ -151,6 +152,7 @@ public:
     const vector<Box>& getBoxes() { return boxes; };
     int getBoxIdCurrentPlayerIn(); // Get the box id that the current player is in
     Subspace& getSubspace(int id); // Get the subspace with id, may be a copy or an original id
+    bool checkMoveLoop(MoveRecord record); // Check if a move is a loop
 };
 
 class Game {
