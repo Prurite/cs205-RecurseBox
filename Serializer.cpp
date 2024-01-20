@@ -101,7 +101,7 @@ string Subspace::show() {
                 ss << " =";
             else if (innerSpace[i][j] == DEST_BLOCK)
                 ss << " _";
-            ss << (map.getBox(x)->getPlayerId() ? 'p' : ' ');
+            ss << (x > BLOCK_ID && map.getBox(x)->getPlayerId() ? 'p' : ' ');
         }
         ss << '\n';
     }
@@ -138,17 +138,15 @@ bool Map::loadFromString(stringstream &ss) {
     string type;
     int n;
     ss >> n;
-    for (size_t i = 0; i < boxes.size(); ++i)
-        delete boxes[i];
     boxes.clear();
     for (size_t i = 0; i < n; ++i) {
         ss >> type;
         if (type == "SolidBlock")
-            boxes.push_back(new SolidBlock(*this));
+            boxes.push_back(make_shared<SolidBlock>(*this));
         else if (type == "Subspace")
-            boxes.push_back(new Subspace(*this));
+            boxes.push_back(make_shared<Subspace>(*this));
         else if (type == "CopyOfSubspace")
-            boxes.push_back(new CopyOfSubspace(*this));
+            boxes.push_back(make_shared<CopyOfSubspace>(*this));
         else
             return false;
         boxes[i]->loadFromString(ss);
@@ -158,8 +156,9 @@ bool Map::loadFromString(stringstream &ss) {
 
 string Map::show() {
     stringstream ss;
-    for (size_t i = 0; i < boxes.size(); ++i)
+    for (size_t i = 0; i < boxes.size(); ++i) {
         ss << boxes[i]->show();
+    }
     return ss.str();
 }
 
@@ -179,9 +178,10 @@ bool Game::loadFromString(string s) {
     moves.clear();
     for (size_t i = 0; i < n; ++i) {
         ss >> type;
-        cout << type << endl;
-        if (type == "Map")
-            moves.push_back(Map(ss));
+        if (type == "Map") {
+            moves.push_back(Map());
+            moves[i].loadFromString(ss);
+        }
         else
             return false;
     }
