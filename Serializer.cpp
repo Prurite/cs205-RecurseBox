@@ -83,7 +83,10 @@ bool Subspace::loadFromString(stringstream &ss) {
 
 string Subspace::show() {
     stringstream ss;
-    ss << "Subspace " << id / SUBSPACE_ID << '\n';
+    if (id == DEFAULT_SPACE_ID)
+        ss << "Default / inf space\n";
+    else
+        ss << "Subspace " << id / SUBSPACE_ID << '\n';
     for (size_t i = 0; i < len; ++i) {
         for (size_t j = 0; j < len; ++j) {
             int x = subBoxes[i][j];
@@ -94,7 +97,7 @@ string Subspace::show() {
                     ss << x / SUBSPACE_ID << "|" << x % SUBSPACE_ID;
                 else
                     ss << ' ' << x / SUBSPACE_ID;
-            } else if (innerSpace[i][j] == WALL)
+            } else if (innerSpace[i][j] == WALL && id != DEFAULT_SPACE_ID)
                 ss << " #";
             else if (innerSpace[i][j] == EMPTY)
                 ss << " .";
@@ -159,9 +162,11 @@ bool Map::loadFromString(stringstream &ss) {
 
 string Map::show() {
     stringstream ss;
-    for (size_t i = 0; i < boxes.size(); ++i) {
+    // Check if the default space is empty; if not, show it
+    if (defaultSpace.hasSubBoxes())
+        ss << defaultSpace.show();
+    for (size_t i = 0; i < boxes.size(); ++i)
         ss << boxes[i]->show();
-    }
     return ss.str();
 }
 

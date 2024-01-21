@@ -169,11 +169,21 @@ MoveResult Subspace::exit(int boxId, Direction d, double p, int x, int y) {
     // On success, the box is inserted into the outer space, and the original box is cleared
 
     Map::MoveLog log = {3, id, boxId, d};
-    if (map->inMovingLoop(log)) {
-        map->loopBorder = log;
-        printMoveLogs(map->moveLogs);
-        return SUCCESS;
-    }
+    if (map->inMovingLoop(log))
+        if (map->moveLogs.back() == log) {
+            // An infinity occurs
+            cout << "Inf exit" << endl;
+            cout << map->getInfSpace(1)->show();
+            MoveResult res = map->getInfSpace(1)->insert(boxId, d, 3, 3, 0.5);
+            cout << "Res " << res << endl;
+            if (res == SUCCESS && x != -1 && y != -1)
+                subBoxes[x][y] = EMPTY;
+            return res;
+        } else {
+            map->loopBorder = log;
+            printMoveLogs(map->moveLogs);
+            return SUCCESS;
+        }
     map->moveLogs.push_back(log);
 
     MoveResult res = FAIL;
@@ -181,8 +191,6 @@ MoveResult Subspace::exit(int boxId, Direction d, double p, int x, int y) {
     int px, py, n_px, n_py;
     size_t parentLen;
     double base_p = 0;
-    if (getParentId() <= 0) return FAIL;
-    // TODO: the default space
     // Get the position of the leaving subspace in the outer space, in (px, py)
     Subspace* parent = map->getSubspace(getParentId());
     parent->getBoxXY(id, px, py);
@@ -203,7 +211,7 @@ MoveResult Subspace::exit(int boxId, Direction d, double p, int x, int y) {
     if (n_px < 0 || n_px >= parentLen || n_py < 0 || n_py >= parentLen) {
         // It's also leaving the outer space
         // Check for infinity
-        double p0 = base_p + p * len / parentLen;
+        double p0 = base_p + p * 1 / parentLen;
         // TODO: infinity
         res = parent->exit(boxId, d, p0);
     } else {
@@ -267,8 +275,8 @@ MoveResult Subspace::insert(int boxId, Direction d, int x, int y, double p) {
 
 bool Subspace::getBoxXY(int boxId, int& x, int& y) {
     // Get the position of a box
-    for (size_t i = 0; i < len; ++i)
-        for (size_t j = 0; j < len; ++j)
+    for (size_t i = 0; i < len; i++)
+        for (size_t j = 0; j < len; j++)
             if (subBoxes[i][j] == boxId) {
                 x = i;
                 y = j;
@@ -277,9 +285,19 @@ bool Subspace::getBoxXY(int boxId, int& x, int& y) {
     return false;
 }
 
+bool Subspace::hasSubBoxes( ) {
+    for (size_t i = 0; i < len; i++)
+        for (size_t j = 0; j < len; j++)
+            if (subBoxes[i][j])
+                return true;
+    return false;
+}
+
 Map::Map( ) : defaultSpace(this) {
+    // The default space is also the 1st order infinity space
+    // TODO: multiple infinity
     string s = R"(
-        Subspace 100000 0 0 7 0 0
+        100000 0 0 7 0 0
         1 1 1 1 1 1 1
         1 0 0 0 0 0 1
         1 0 0 0 0 0 1
@@ -299,7 +317,7 @@ Map::Map( ) : defaultSpace(this) {
     defaultSpace.loadFromString(ss);
 }
 
-Map::Map(const Map& m) : playerBoxes(m.playerBoxes), infBoxes(m.infBoxes), epsBoxes(m.epsBoxes), defaultSpace(m.defaultSpace) {
+Map::Map(const Map& m) : defaultSpace(m.defaultSpace) {
     for (size_t i = 0; i < m.boxes.size(); ++i) {
         Subspace* p1 = dynamic_cast<Subspace*>(m.boxes[i].get());
         CopyOfSubspace* p2 = dynamic_cast<CopyOfSubspace*>(m.boxes[i].get());
@@ -312,6 +330,7 @@ Map::Map(const Map& m) : playerBoxes(m.playerBoxes), infBoxes(m.infBoxes), epsBo
             boxes.push_back(make_shared<SolidBlock>(*p3));
         boxes[i]->setMap(this);
     }
+    defaultSpace.setMap(this);
 }
 
 Subspace* Map::getSubspace(int id) {
@@ -327,6 +346,16 @@ Subspace* Map::getSubspace(int id) {
     for (size_t i = 0; i < boxes.size(); ++i) {
         Subspace* subspace = dynamic_cast<Subspace*>(boxes[i].get());
         if (subspace != NULL && subspace->getId() == id)
+            return subspace;
+    }
+    return &defaultSpace;
+}
+
+Subspace* Map::getInfSpace(int order) {
+    // Get the order-th infinity subspace
+    for (size_t i = 0; i < boxes.size(); ++i) {
+        Subspace* subspace = dynamic_cast<Subspace*>(boxes[i].get());
+        if (subspace != NULL && subspace->getInfEpsLevel() == order)
             return subspace;
     }
     return &defaultSpace;

@@ -16,7 +16,7 @@ enum Destination { NONE, PLAYER, BLOCK };
 enum Space { EMPTY, WALL, DEST_PLAYER, DEST_BLOCK };
 enum MoveResult { SUCCESS, FAIL, LOOP };
 // Success: things are moved; Fail: things are not moved; Loop: things are moved but the space is not vacant
-const int BLOCK_ID = 100, SUBSPACE_ID = 1000;
+const int BLOCK_ID = 100, SUBSPACE_ID = 1000, DEFAULT_SPACE_ID = 100000;
 const int INF_ID = 100, EPS_ID = 101;
 const double EPS = 1e-5;
 
@@ -124,6 +124,8 @@ public:
     bool isWall(int x, int y) { return innerSpace[x][y] == WALL; };
     bool isTileEmpty(int x, int y) { return innerSpace[x][y] != WALL && subBoxes[x][y] == EMPTY; };
     bool getBoxXY(int boxId, int& x, int& y); // Get the position of a box
+    int getInfEpsLevel() { return infEpsLevel; };
+    bool hasSubBoxes();
 };
 
 class CopyOfSubspace : public Box {
@@ -150,10 +152,6 @@ class Map {
 public:   
     vector< shared_ptr<Box> > boxes; // Subspaces and other movable boxes
     // Each box has a unique id, which is described at the top of the file.
-    vector<int> playerBoxes; // All boxes that are players, the lower the index the higher priority it has
-    vector<int> infBoxes, epsBoxes; // Boxes that are inf or eps, the index is its order - 1
-    // NOTES: on initializing, the maximum existing order should be read from the string
-    // and corresponding inf boxes are allocated
 
     struct MoveLog { int type, parentId, boxId; Direction d; }; // The log of a move
     // Type: 0: move, 1: insert, 2: enter, 3: exit
