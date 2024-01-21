@@ -315,6 +315,15 @@ Map::Map(const Map& m) : playerBoxes(m.playerBoxes), infBoxes(m.infBoxes), epsBo
 }
 
 Subspace* Map::getSubspace(int id) {
+    // Whether the input id is a copy or an original id, find the original subspace
+
+    // Check if id is a copy of a subspace
+    for (size_t i = 0; i < boxes.size(); ++i) {
+        CopyOfSubspace* copy = dynamic_cast<CopyOfSubspace*>(boxes[i].get());
+        if (copy != NULL && copy->getId() == id)
+            return getSubspace(copy->getOriginalId());
+    }
+
     for (size_t i = 0; i < boxes.size(); ++i) {
         Subspace* subspace = dynamic_cast<Subspace*>(boxes[i].get());
         if (subspace != NULL && subspace->getId() == id)

@@ -102,7 +102,8 @@ string Subspace::show() {
                 ss << " =";
             else if (innerSpace[i][j] == DEST_BLOCK)
                 ss << " _";
-            ss << (x > BLOCK_ID && map->getBox(x)->getPlayerId() ? 'p' : ' ');
+            if (!(x >= SUBSPACE_ID && x % SUBSPACE_ID))
+                ss << (x > BLOCK_ID && map->getBox(x)->getPlayerId() ? 'p' : ' ');
         }
         ss << '\n';
     }
