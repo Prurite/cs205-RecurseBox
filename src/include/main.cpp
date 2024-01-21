@@ -6,6 +6,7 @@
 #include <string>
 #include <Windows.h>
 #include <cstring>
+#include "Box.h"
 using namespace std;
 
 #define windowheight 800
@@ -13,7 +14,10 @@ using namespace std;
 
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
+Game game("");
 std::string text;
+bool is_load_game =false;
+bool is_gamming = false;
 int the_numberofgame = 0;
 int main_table = 0;
 int whole_game = 18;
@@ -56,8 +60,55 @@ void DrawFont(SDL_Renderer* renderer,TTF_Font* font, const std::string& text,int
     SDL_DestroyTexture(texture);
 }
 
-//load map form the stream **unfinished
+//load map from game
+int loadmap_game(SDL_Rect wind,Game game){
+    SDL_Log("%s",game.show().c_str());
+    SDL_Surface* bmp_surf = SDL_LoadBMP("../../imags/background.bmp");
+    if (bmp_surf == NULL) {
+        SDL_Log("bmp failed");
+        return 0;
+    }
+
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, bmp_surf);
+    if (bmp_surf == NULL) {
+        SDL_Log("bmp failed");
+        return 0;
+    }
+    SDL_Rect re_bmp ={0,0,wind.w,wind.h};
+    SDL_RenderCopy(renderer,texture, NULL, &re_bmp);
+    SDL_RenderPresent(renderer);
+    SDL_FreeSurface(bmp_surf); 
+    SDL_DestroyTexture(texture);
+
+    return 0;
+}
+
+//load map form the stream
 int loadmap(SDL_Rect wind,std::string stream){
+    SDL_Surface* bmp_surf = SDL_LoadBMP("../../imags/background.bmp");
+    if (bmp_surf == NULL) {
+        SDL_Log("bmp failed");
+        return 0;
+    }
+
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, bmp_surf);
+    if (bmp_surf == NULL) {
+        SDL_Log("bmp failed");
+        return 0;
+    }
+    SDL_Rect re_bmp ={0,0,wind.w,wind.h};
+    SDL_RenderCopy(renderer,texture, NULL, &re_bmp);
+    SDL_RenderPresent(renderer);
+    SDL_FreeSurface(bmp_surf); 
+    SDL_DestroyTexture(texture);
+    ifstream fin(stream);
+    string s;
+    getline(fin, s, '\0');
+    Game gg(s);
+    game = gg;
+    SDL_Log("%s",game.toString().c_str());
+    
+    loadmap_game(wind,game);
     return 0;
 }
 
@@ -67,36 +118,69 @@ int isload(std::string text){
     }
     return -1;
 }
-//     *** unfinished  **//
+
+// save the map as .txt
 int savemap(std::string &text,SDL_Rect window_rect){
-    ifstream ifs;
-    ifs.open(text.c_str(),ios::in);
-    char c;
-    ifs >> c;
-    std::ofstream outputFile(text.c_str());
-    if (outputFile.is_open() && ifs.eof()) {
-        //write the data into the file 
+    int a = isload(text.c_str());
+    if(a == -1){
+        std::ofstream outputFile(text.c_str());
+        if (outputFile.is_open() ) {
+            outputFile << game.toString() << endl;
+            outputFile.close();
+            SDL_Rect load_rect ={0,0,windowwidth,windowheight};
+            SDL_GetWindowSize(window, &load_rect.w, &load_rect.h);
 
+            bmp_copy("../../imags/background.bmp",0,0,load_rect.w,load_rect.h);
+            bmp_copy("../../imags/text.bmp",100,500,600,50);
 
-        outputFile.close();
-        int size = 25*(window_rect.h)/600;
+            int size = 36*(load_rect.h)/600;
+            TTF_Font *font= TTF_OpenFont("../../a.ttf",size);
+            SDL_Surface *txt_font = TTF_RenderUTF8_Blended(font,"Please input the name of the file.",{255,0,255});
+            SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer,txt_font);
+            SDL_Rect font_bmp ={(load_rect.w-txt_font->w)/2,load_rect.h*5/14,txt_font->w,txt_font->h};
+            SDL_RenderCopy(renderer,tex,NULL,&font_bmp);
+            
+            SDL_DestroyTexture(tex);
+            SDL_FreeSurface(txt_font);
+            TTF_CloseFont(font);
+            SDL_RenderPresent(renderer);
+            size = 25*(window_rect.h)/600;
+            font= TTF_OpenFont("../../a.ttf",size);
+            txt_font = TTF_RenderUTF8_Blended(font,"Data saved",{0,255,0});
+            tex = SDL_CreateTextureFromSurface(renderer,txt_font);
+            font_bmp ={(window_rect.w-txt_font->w)/2,window_rect.h*6/14,txt_font->w,txt_font->h};
+            SDL_RenderCopy(renderer,tex,NULL,&font_bmp);
+                                        
+            SDL_DestroyTexture(tex);
+            SDL_FreeSurface(txt_font);
+            TTF_CloseFont(font);
+            SDL_RenderPresent(renderer);
+        } 
+    }
+    else {
+        SDL_Rect load_rect ={0,0,windowwidth,windowheight};
+        SDL_GetWindowSize(window, &load_rect.w, &load_rect.h);
+
+        bmp_copy("../../imags/background.bmp",0,0,load_rect.w,load_rect.h);
+        bmp_copy("../../imags/text.bmp",100,500,600,50);
+
+        
+        int size = 36*(load_rect.h)/600;
         TTF_Font *font= TTF_OpenFont("../../a.ttf",size);
-        SDL_Surface *txt_font = TTF_RenderUTF8_Blended(font,"Data saved",{0,255,0});
+        SDL_Surface *txt_font = TTF_RenderUTF8_Blended(font,"Please input the name of the file.",{255,0,255});
         SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer,txt_font);
-        SDL_Rect font_bmp ={(window_rect.w-txt_font->w)/2,window_rect.h*6/14,txt_font->w,txt_font->h};
+        SDL_Rect font_bmp ={(load_rect.w-txt_font->w)/2,load_rect.h*5/14,txt_font->w,txt_font->h};
         SDL_RenderCopy(renderer,tex,NULL,&font_bmp);
-                                    
+        
         SDL_DestroyTexture(tex);
         SDL_FreeSurface(txt_font);
         TTF_CloseFont(font);
         SDL_RenderPresent(renderer);
-        ifs.close();
-    } else {
-        int size = 25*(window_rect.h)/600;
-        TTF_Font *font= TTF_OpenFont("../../a.ttf",size);
-        SDL_Surface *txt_font = TTF_RenderUTF8_Blended(font,"Wrong saving",{255,0,0});
-        SDL_Texture *tex = SDL_CreateTextureFromSurface(renderer,txt_font);
-        SDL_Rect font_bmp ={(window_rect.w-txt_font->w)/2,window_rect.h*6/14,txt_font->w,txt_font->h};
+        size = 25*(window_rect.h)/600;
+        font= TTF_OpenFont("../../a.ttf",size);
+        txt_font = TTF_RenderUTF8_Blended(font,"Wrong saving",{255,0,0});
+        tex = SDL_CreateTextureFromSurface(renderer,txt_font);
+        font_bmp ={(window_rect.w-txt_font->w)/2,window_rect.h*6/14,txt_font->w,txt_font->h};
         SDL_RenderCopy(renderer,tex,NULL,&font_bmp);
                                     
         SDL_DestroyTexture(tex);
@@ -105,7 +189,6 @@ int savemap(std::string &text,SDL_Rect window_rect){
         SDL_RenderPresent(renderer);
         SDL_StopTextInput();
     }
-    ifs.close();
 
     return 0;
 }
@@ -147,7 +230,7 @@ int Init_loadgame(SDL_Rect wind={0,0,windowwidth,windowheight}){
     int size = 36*(wind.h)/600;
     TTF_Font *font = TTF_OpenFont("../../a.ttf",size);
     TTF_Font *font2 = TTF_OpenFont("../../a.ttf",size*2);
-    if(font==NULL){
+    if(font==NULL && font2 ==NULL){
         SDL_Log("a failed");
         return -1;
     }
@@ -416,7 +499,6 @@ int load_game_table(){
 
     bmp_copy("../../imags/background.bmp",0,0,load_rect.w,load_rect.h);
     bmp_copy("../../imags/text.bmp",100,500,600,50);
-
     
     int size = 36*(load_rect.h)/600;
     TTF_Font *font= TTF_OpenFont("../../a.ttf",size);
@@ -429,6 +511,7 @@ int load_game_table(){
     SDL_FreeSurface(txt_font);
     TTF_CloseFont(font);
     SDL_RenderPresent(renderer);
+
     return 0;
 }
 
@@ -455,30 +538,24 @@ int save_game_table(){
 }
 
 int gamming_table(SDL_Rect wind,int num){
-     SDL_Surface* bmp_surf = SDL_LoadBMP("../../imags/background.bmp");
-    if (bmp_surf == NULL) {
-        SDL_Log("bmp failed");
-        return 0;
-    }
-
-    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, bmp_surf);
-    if (bmp_surf == NULL) {
-        SDL_Log("bmp failed");
-        return 0;
-    }
-    SDL_Rect re_bmp ={0,0,wind.w,wind.h};
-    SDL_RenderCopy(renderer,texture, NULL, &re_bmp);
-    SDL_RenderPresent(renderer);
-    SDL_FreeSurface(bmp_surf); 
-    SDL_DestroyTexture(texture);
+    std::string number = std::to_string(num);
+    std::string append = "../../maps/";
+    std::string append2 = ".txt";
+    std::string full_text =  append+number ;
+    full_text = full_text + append2;
+    loadmap(wind,full_text);
     return 0;
+}
+
+bool is_win(Game game){
+    return !game.getMap().isComplete();
 }
 
 //to receive the input command
 void gameevent(){
     SDL_Event event;
     bool isquit=false;
-    int celect;
+    int celect =1;
     SDL_Rect window_rect ={0,0,windowwidth,windowheight};
     bool isdone =true; //to judge whether past done
     int number; //to store the number which entered
@@ -542,6 +619,7 @@ void gameevent(){
                             }else if (the_numberofgame == 2)
                             {
                                 the_numberofgame = 4;
+                                is_gamming = true;
                                 SDL_GetWindowSize(window, &window_rect.w, &window_rect.h);
                                 gamming_table(window_rect,celect);
                                 break;
@@ -552,6 +630,9 @@ void gameevent(){
                                 std::string full_text =  append+text ;
                                 full_text = full_text +append2;
                                 if (isload(full_text) == 0){
+                                    the_numberofgame = 4;
+                                    is_gamming = true;
+                                    is_load_game = true;
                                     SDL_GetWindowSize(window, &window_rect.w, &window_rect.h);
                                     loadmap(window_rect,full_text);
                                     break;
@@ -571,6 +652,7 @@ void gameevent(){
                                 }
                             }else if (the_numberofgame == 4){
                                 the_numberofgame = 5;
+                                is_gamming = false;
                                 SDL_GetWindowSize(window, &window_rect.w, &window_rect.h);
                                 SDL_StartTextInput();
                                 text = "";
@@ -587,10 +669,11 @@ void gameevent(){
                                 break;
                             }else if (the_numberofgame == 6){
                                 the_numberofgame = 2;
+                                is_gamming = false;
                                 SDL_GetWindowSize(window, &window_rect.w, &window_rect.h);
                                     game_table(window_rect,celect);
                                 break;
-                            }
+                            }   
                                
                         }else if (event.key.keysym.sym == SDLK_UP)
                         {
@@ -604,6 +687,16 @@ void gameevent(){
                                 SDL_GetWindowSize(window, &window_rect.w, &window_rect.h);
                                 game_table(window_rect,celect);
                                 break;
+                            }else if (is_gamming && game.move(UP))
+                            {
+                                if(is_win(game)){
+                                    the_numberofgame = 6;
+                                    SDL_GetWindowSize(window, &window_rect.w, &window_rect.h);
+                                    winning_table(window_rect);
+                                    break;
+                                }
+                                SDL_GetWindowSize(window, &window_rect.w, &window_rect.h);
+                                loadmap_game(window_rect,game);
                             }
                             break;
                         }else if (event.key.keysym.sym == SDLK_DOWN)
@@ -617,6 +710,16 @@ void gameevent(){
                                 celect = celect + 1;
                                 SDL_GetWindowSize(window, &window_rect.w, &window_rect.h);
                                 game_table(window_rect,celect);
+                            }else if (is_gamming && game.move(DOWN))
+                            {
+                                if(is_win(game)){
+                                    the_numberofgame = 6;
+                                    SDL_GetWindowSize(window, &window_rect.w, &window_rect.h);
+                                    winning_table(window_rect);
+                                    break;
+                                }
+                                SDL_GetWindowSize(window, &window_rect.w, &window_rect.h);
+                                loadmap_game(window_rect,game);
                             }
                             break;
                         }else if (event.key.keysym.sym == SDLK_LEFT)
@@ -626,6 +729,16 @@ void gameevent(){
                                 celect = celect - 10;
                                 SDL_GetWindowSize(window, &window_rect.w, &window_rect.h);
                                 game_table(window_rect,celect);
+                            }else if (is_gamming && game.move(LEFT))
+                            {
+                                if(is_win(game)){
+                                    the_numberofgame = 6;
+                                    SDL_GetWindowSize(window, &window_rect.w, &window_rect.h);
+                                    winning_table(window_rect);
+                                    break;
+                                }
+                                SDL_GetWindowSize(window, &window_rect.w, &window_rect.h);
+                                loadmap_game(window_rect,game);
                             }
                             break;
                         }else if (event.key.keysym.sym == SDLK_RIGHT)
@@ -635,7 +748,39 @@ void gameevent(){
                                 celect = celect + 10;
                                 SDL_GetWindowSize(window, &window_rect.w, &window_rect.h);
                                 game_table(window_rect,celect);
+                            }else if (is_gamming && game.move(RIGHT))
+                            {
+                                if(is_win(game)){
+                                    the_numberofgame = 6;
+                                    SDL_GetWindowSize(window, &window_rect.w, &window_rect.h);
+                                    winning_table(window_rect);
+                                    break;
+                                }
+                                SDL_GetWindowSize(window, &window_rect.w, &window_rect.h);
+                                loadmap_game(window_rect,game);
                             }   
+                            break;
+                        }else if (event.key.keysym.sym == SDLK_z)
+                        {
+                            if(is_gamming && game.undo()){
+                                SDL_GetWindowSize(window, &window_rect.w, &window_rect.h);
+                                loadmap_game(window_rect,game);    
+                            }
+                            break;
+                        }else if (event.key.keysym.sym == SDLK_x)
+                        {
+                            if(is_gamming && game.redo()){
+                                SDL_GetWindowSize(window, &window_rect.w, &window_rect.h);
+                                loadmap_game(window_rect,game);   
+                            }
+                            break;
+                        }else if (event.key.keysym.sym == SDLK_r)
+                        {
+                            SDL_Log("bitch");
+                            if(is_gamming && game.reset()){
+                                SDL_GetWindowSize(window, &window_rect.w, &window_rect.h);
+                                loadmap_game(window_rect,game);   
+                            }
                             break;
                         }else if (event.key.keysym.scancode == 41){
                             //the esc keyboard
@@ -658,8 +803,17 @@ void gameevent(){
                                     the_numberofgame = 1;
                                     main_gametable(window_rect,main_table);
                                     break;
+                                }else if (the_numberofgame == 4 && is_load_game == true){
+                                    SDL_GetWindowSize(window, &window_rect.w, &window_rect.h);
+                                    is_gamming = false;
+                                    is_load_game = false;
+                                    the_numberofgame = 1;
+                                    main_table =1;
+                                    main_gametable(window_rect,main_table);
+                                    break;
                                 }else if (the_numberofgame == 4){
                                     SDL_GetWindowSize(window, &window_rect.w, &window_rect.h);
+                                    is_gamming = false;
                                     the_numberofgame = 2;
                                     game_table(window_rect,celect);
                                     break;
@@ -667,7 +821,14 @@ void gameevent(){
                                 {
                                     SDL_GetWindowSize(window, &window_rect.w, &window_rect.h);
                                     the_numberofgame = 4;
-                                    gamming_table(window_rect,celect);
+                                    is_gamming = true;
+                                    loadmap_game(window_rect,game);
+                                    break;
+                                }else if(the_numberofgame == 6){
+                                    SDL_GetWindowSize(window, &window_rect.w, &window_rect.h);
+                                    is_gamming = false;
+                                    the_numberofgame = 2;
+                                    game_table(window_rect,celect);
                                     break;
                                 }
                                 
